@@ -545,50 +545,115 @@ function buildCats(){
 /* ---------- ses ---------- */
 const Sound=(()=>{
   let ctx=null,master=null,delay=null,on=false,timer=null,next=0,step=0;
-  const CH=[[50,57,62,65],[46,53,58,62],[53,57,60,65],[48,55,60,64]]; // Dm, Bb, F, C (midi)
-  const SCALE=[62,64,65,67,69,72,74,76,77,79,81];
+  // Orijinal, anlık üretilen lounge cazı: F majörde 8 ölçülük döngü, swing ritim
+  const BPM=92,BEAT=60/BPM;
+  const PROG=[
+    {b:41,v:[57,60,64,67],t:[65,69,72,76,77,79,81,84]},   // Fmaj9
+    {b:38,v:[54,60,64,66],t:[66,69,72,74,76,78,81]},      // D7(9)
+    {b:43,v:[58,62,65,69],t:[67,70,72,74,77,79,82]},      // Gm9
+    {b:36,v:[58,62,64,69],t:[67,69,70,72,74,76,79]},      // C13
+    {b:45,v:[60,64,67,71],t:[69,72,74,76,79,81,84]},      // Am9
+    {b:38,v:[54,60,64,71],t:[66,69,71,72,74,78,81]},      // D13
+    {b:43,v:[58,62,65,69],t:[67,70,72,74,77,79,82]},      // Gm9
+    {b:36,v:[58,62,64,68],t:[67,68,70,72,76,79,80]}       // C7(b13)
+  ];
+  let noise=null,bar=0,beat=0,phrase=false,lastMel=72;
   const hz=m=>440*Math.pow(2,(m-69)/12);
   function init(){
     if(ctx)return;
     const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-    ctx=new AC();master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);
-    delay=ctx.createDelay(1);delay.delayTime.value=.36;const fb=ctx.createGain();fb.gain.value=.32;const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1800;
-    delay.connect(lp);lp.connect(fb);fb.connect(delay);lp.connect(master);
+    ctx=new AC();master=ctx.createGain();master.gain.value=0;
+    const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination);
+    delay=ctx.createDelay(1);delay.delayTime.value=BEAT*.75;const fb=ctx.createGain();fb.gain.value=.22;const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2200;
+    const wet=ctx.createGain();wet.gain.value=.5;
+    delay.connect(lp);lp.connect(fb);fb.connect(delay);lp.connect(wet);wet.connect(master);
+    noise=ctx.createBuffer(1,ctx.sampleRate*.5,ctx.sampleRate);const d=noise.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
   }
+  function env(g,t,a,peak,dec){g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+dec);}
   function tone(m,t,dur,type,vol,toDelay){
-    const o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();
-    o.type=type;o.frequency.value=hz(m);f.type='lowpass';f.frequency.value=type==='triangle'?2400:900;
-    g.gain.setValueAtTime(0,t);
-    if(dur>1){g.gain.linearRampToValueAtTime(vol,t+dur*.35);g.gain.linearRampToValueAtTime(0,t+dur);}
-    else{g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);}
-    o.connect(f);f.connect(g);g.connect(master);if(toDelay)g.connect(delay);
-    o.start(t);o.stop(t+dur+.05);
+    const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=hz(m);
+    env(g,t,.01,vol,dur);o.connect(g);g.connect(master);if(toDelay)g.connect(delay);o.start(t);o.stop(t+dur+.05);
+  }
+  // elektrik piyano: temel ton + kısa "tine" parlaması
+  function rhodes(m,t,dur,vol){
+    const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),g2=ctx.createGain(),f=ctx.createBiquadFilter();
+    o.type='sine';o.frequency.value=hz(m);o2.type='sine';o2.frequency.value=hz(m)*4.0;f.type='lowpass';f.frequency.value=2600;
+    env(g,t,.008,vol,dur);env(g2,t,.003,vol*.35,.18);
+    o.connect(g);o2.connect(g2);g2.connect(g);g.connect(f);f.connect(master);f.connect(delay);
+    o.start(t);o2.start(t);o.stop(t+dur+.05);o2.stop(t+.3);
+  }
+  // vibrafon: yumuşak tremololu melodi
+  function vibe(m,t,dur,vol){
+    const o=ctx.createOscillator(),g=ctx.createGain(),tr=ctx.createGain(),lfo=ctx.createOscillator(),lg=ctx.createGain();
+    o.type='sine';o.frequency.value=hz(m);lfo.frequency.value=5.2;lg.gain.value=.35;tr.gain.value=.65;
+    lfo.connect(lg);lg.connect(tr.gain);env(g,t,.006,vol,dur);
+    o.connect(tr);tr.connect(g);g.connect(master);g.connect(delay);o.start(t);lfo.start(t);o.stop(t+dur+.05);lfo.stop(t+dur+.05);
+  }
+  // kontrbas: yuvarlak, kısa sönümlü
+  function bass(m,t){
+    const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();
+    o.type='triangle';o.frequency.value=hz(m);o2.type='sine';o2.frequency.value=hz(m);f.type='lowpass';f.frequency.setValueAtTime(900,t);f.frequency.exponentialRampToValueAtTime(260,t+.3);
+    env(g,t,.012,.32,BEAT*.95);o.connect(f);o2.connect(f);f.connect(g);g.connect(master);o.start(t);o2.start(t);o.stop(t+BEAT+.1);o2.stop(t+BEAT+.1);
+  }
+  // fırça baterisi: ride ve hi-hat gürültüden
+  function hit(t,freq,vol,dec){
+    const n=ctx.createBufferSource(),f=ctx.createBiquadFilter(),g=ctx.createGain();n.buffer=noise;f.type='highpass';f.frequency.value=freq;
+    env(g,t,.002,vol,dec);n.connect(f);f.connect(g);g.connect(master);n.start(t,Math.random()*.3);n.stop(t+dec+.05);
+  }
+  function brush(t){
+    const n=ctx.createBufferSource(),f=ctx.createBiquadFilter(),g=ctx.createGain();n.buffer=noise;f.type='bandpass';f.frequency.value=3000;f.Q.value=.7;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.025,t+BEAT*.5);g.gain.linearRampToValueAtTime(0,t+BEAT);n.connect(f);f.connect(g);g.connect(master);n.start(t);n.stop(t+BEAT+.05);
+  }
+  function walk(i){
+    const ch=PROG[bar],nx=PROG[(bar+1)%PROG.length],r=ch.b;
+    if(i===0)return r;
+    if(i===1){const minor=ch.v.some(m=>(m-r+120)%12===3);return r+(minor?3:4)+(Math.random()<.3?12:0);}
+    if(i===2)return r+7;
+    return nx.b+(Math.random()<.5?1:-1);
+  }
+  function melody(t,ch,len){
+    const opts=ch.t;let best=opts[0],bd=99;
+    const target=lastMel+(Math.random()<.5?-1:1)*(1+Math.floor(Math.random()*4));
+    opts.forEach(m=>{const d=Math.abs(m-target);if(d<bd){bd=d;best=m;}});
+    lastMel=best;vibe(best,t,len,.07);
   }
   function tick(){
-    while(next<ctx.currentTime+.4){
-      const bar=Math.floor(step/8)%4,beat=step%8;
-      if(beat===0)CH[bar].forEach((m,i)=>tone(m,next,4.4,i?'sine':'triangle',i?.05:.07,false));
-      if(Math.random()<(beat%2?.25:.5)){
-        const chordTones=CH[bar].map(x=>x+12);
-        const m=Math.random()<.6?chordTones[Math.floor(Math.random()*4)]:SCALE[Math.floor(Math.random()*SCALE.length)];
-        tone(m,next,.9,'triangle',.06,true);
+    while(next<ctx.currentTime+.5){
+      const ch=PROG[bar],t=next,sw=BEAT*2/3;
+      // bas: her vuruşta yürüyen bas
+      bass(walk(beat),t);
+      // bateri: ride "ding ding-da ding ding-da", hi-hat 2 ve 4'te, fırça sürekli
+      hit(t,7000,beat%2?.05:.035,.22);
+      if(beat%2===1){hit(t+sw,7000,.025,.12);hit(t,9000,.03,.04);}
+      brush(t);
+      // piyano: Charleston ritmi ve rastgele vurgular
+      if(beat===0&&Math.random()<.7)ch.v.forEach(m=>rhodes(m,t,BEAT*1.2,.045));
+      if(beat===1&&Math.random()<.6)ch.v.forEach(m=>rhodes(m,t+sw,BEAT*.9,.04));
+      if(beat===2&&Math.random()<.35)ch.v.forEach(m=>rhodes(m,t,BEAT*.8,.04));
+      if(beat===3&&Math.random()<.45)ch.v.forEach(m=>rhodes(m,t+sw,BEAT*1.4,.04));
+      // vibrafon: ölçü başında cümleye başla ya da sus
+      if(beat===0)phrase=Math.random()<.6;
+      if(phrase){
+        if(Math.random()<.7)melody(t,ch,BEAT*.9);
+        if(Math.random()<.45)melody(t+sw,ch,BEAT*.5);
       }
-      next+=.5;step++;
+      next+=BEAT;beat++;
+      if(beat===4){beat=0;bar=(bar+1)%PROG.length;}
     }
   }
   function start(){
     init();if(!ctx)return false;ctx.resume();
     master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setTargetAtTime(.5,ctx.currentTime,.8);
-    next=ctx.currentTime+.1;clearInterval(timer);timer=setInterval(tick,100);return true;
+    next=ctx.currentTime+.1;bar=0;beat=0;clearInterval(timer);timer=setInterval(tick,100);return true;
   }
   function stop(){if(!ctx)return;master.gain.setTargetAtTime(0,ctx.currentTime,.3);clearInterval(timer);timer=null;}
   function ui(){const b=$('b-sound');b.textContent='Müzik: '+(on?'açık':'kapalı');b.setAttribute('aria-pressed',String(on));}
   return {
     toggle(){on=!on;if(on){if(!start())on=false;}else stop();ui();try{localStorage.setItem('konuk-sound',on?'1':'0');}catch(e){}},
     wantsOn(){try{return localStorage.getItem('konuk-sound')==='1';}catch(e){return false;}},
-    pluck(combo,types){if(!on||!ctx)return;const t=ctx.currentTime;types.forEach((ty,i)=>{const m=[74,76,79,81,84][TK.indexOf(ty)]+Math.min(combo,4)*2;tone(m,t+i*.06,.35,'sine',.09,true);});},
+    pluck(combo,types){if(!on||!ctx)return;const t=ctx.currentTime;types.forEach((ty,i)=>{const m=[77,79,81,84,86][TK.indexOf(ty)]+Math.min(combo,4)*2;tone(m,t+i*.06,.35,'sine',.09,true);});},
     meow(){if(!on||!ctx)return;const t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();o.type='sawtooth';f.type='bandpass';f.frequency.value=1400;f.Q.value=3;o.frequency.setValueAtTime(620,t);o.frequency.linearRampToValueAtTime(900,t+.12);o.frequency.linearRampToValueAtTime(560,t+.42);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.12,t+.05);g.gain.exponentialRampToValueAtTime(.001,t+.45);o.connect(f);f.connect(g);g.connect(master);o.start(t);o.stop(t+.5);},
-    chime(){if(!on||!ctx)return;const t=ctx.currentTime;[79,83,86].forEach((m,i)=>tone(m,t+i*.09,.6,'sine',.08,true));},
+    chime(){if(!on||!ctx)return;const t=ctx.currentTime;[77,81,84].forEach((m,i)=>tone(m,t+i*.09,.6,'sine',.08,true));},
     ui
   };
 })();
