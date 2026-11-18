@@ -15,6 +15,9 @@ Konuk, bir eşleştirme bulmacası ile konuk yaşam simülasyonunu birleştiren 
 - İhtiyaçları dolu tutulan konuğun **gönlü** artar. Gönlü sıfıra inen konuk küsüp gider.
 - Akşamları konuklar arkadaş olur ya da birbirleriyle gerilir. Bu da ertesi günkü ihtiyaçlarını etkiler.
 - Ayrılan konuklar yıldız ve yorum bırakır. Kazandığın parayla oteli geliştirirsin (semaver, gramofon, bahçe, yeni oda).
+- **Dekorasyon:** duvar rengini seç, lobiye kilim, sardunya, bakır sini sofra, duvar çinileri, pirinç avize ve nazarlı ayna al. Her dekor lobide görünür ve bir ihtiyacın daha yavaş azalmasını sağlar.
+- **Kediler:** otelin iki kedisi Pamuk ve Tarçın lobide dolaşır. Bir kediye dokunmak seçili konuğun keyfini artırır. Geceleri konukların yanında uyuyabilirler (titiz konuklar bundan pek hoşlanmaz).
+- **Müzik:** "Müzik" düğmesiyle tarayıcıda anlık üretilen hafif bir ortam müziği ve eşleşme sesleri açılır.
 - Hedef: beş yıldızlı bir otel.
 
 ## Çalıştırma

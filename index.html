@@ -119,6 +119,26 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
 .legend div{display:flex;align-items:center;gap:8px;font-size:13.5px}
 .legend .face{width:30px;height:30px;flex:none}
 .win{background:var(--nar);color:var(--surface);border-radius:12px;padding:10px 14px;font-weight:700}
+.lobby{width:100%;max-width:560px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--surface);position:relative}
+.lobby svg{display:block;width:100%;height:auto}
+.lobby-cap{position:absolute;left:10px;top:8px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.82);color:#14243a;padding:2px 8px;border-radius:99px}
+.guy{transition:transform .6s ease}
+.cats{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.cat{pointer-events:auto;cursor:pointer}
+.cat .walk{animation:walk var(--d) ease-in-out infinite alternate}
+.cat .flip{animation:flip var(--d) steps(1) infinite}
+.cat .tail{transform-origin:12px -8px;animation:tail 1.6s ease-in-out infinite alternate}
+.cat.sleepy .walk,.cat.sleepy .flip{animation-play-state:paused}
+@keyframes walk{0%,12%{transform:translateX(0)}88%,100%{transform:translateX(var(--w))}}
+@keyframes flip{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}}
+@keyframes tail{to{transform:rotate(-28deg)}}
+.cat-heart{animation:up 1s ease-out forwards}
+.decor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.sw{width:44px;height:44px;border-radius:12px;border:2px solid var(--line);position:relative}
+.sw.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.sw span{position:absolute;left:0;right:0;bottom:-20px;font-size:11px;text-align:center;color:var(--muted)}
+.btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 @media (max-width:1060px){
   .layout{grid-template-columns:minmax(0,1fr)}
   .guests{flex-direction:row;overflow-x:auto;padding:3px 3px 8px;order:0}
@@ -129,7 +149,7 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
 @media (max-width:520px){.brand h1{font-size:32px}.stat{min-width:62px;padding:5px 9px}.stat b{font-size:16px}.tile{padding:2px}}
 .guest.got{animation:got .45s ease-out}
 @keyframes got{40%{transform:scale(1.03)}}
-@media (prefers-reduced-motion:reduce){.tile,.face,.bar i{transition:none}.float,.tile.hint .face{animation:none}}
+@media (prefers-reduced-motion:reduce){.cat .walk,.cat .flip,.cat .tail{animation:none}.tile,.face,.bar i{transition:none}.float,.tile.hint .face{animation:none}}
 </style>
 </head>
 <body>
@@ -143,6 +163,8 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
       <div class="stat"><small>Hamle</small><b id="s-moves">18</b></div>
       <div class="stat"><small>Kasa</small><b id="s-lira">30 ₺</b></div>
       <div class="stat"><small>İtibar</small><b id="s-rep">—</b></div>
+      <button class="btn" id="b-decor" type="button">Dekorasyon</button>
+      <button class="btn" id="b-sound" type="button" aria-pressed="false">Müzik: kapalı</button>
       <button class="btn" id="b-help" type="button">Nasıl oynanır</button>
       <button class="btn" id="b-new" type="button">Yeni oyun</button>
     </div>
@@ -150,6 +172,7 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
   <main class="layout">
     <section class="guests" id="guests" aria-label="Konuklar"></section>
     <section class="boardwrap">
+      <div class="lobby" id="lobby" aria-label="Otel lobisi"></div>
       <div class="board" id="board" aria-label="Bulmaca tahtası"></div>
       <p class="hint-line" id="hint"></p>
     </section>
@@ -213,7 +236,7 @@ function makeWish(g){
   return {t,target:ri(9,15),got:0,done:false};
 }
 function freshState(){
-  S={day:1,move:0,lira:30,reviews:[],guests:[],sel:0,rooms:3,up:{},rel:{},log:[],nextId:1,won:false,grid:null,seenHelp:false};
+  S={day:1,move:0,lira:30,reviews:[],guests:[],sel:0,rooms:3,up:{},rel:{},log:[],nextId:1,won:false,grid:null,seenHelp:false,decor:{},wall:'deniz',petted:{}};
   S.guests.push(newGuest()); S.guests.push(newGuest());
   addLog('Simge Hotel kapılarını açtı. İlk konuklar geldi: '+S.guests.map(g=>g.name).join(' ve ')+'.');
   genGrid();
@@ -306,6 +329,7 @@ async function cascade(){
     const tally={};
     for(const [r,c] of set.values()){const t=cells[r][c].t;tally[t]=(tally[t]||0)+1;}
     for(const t in tally)deliver(t,tally[t],combo);
+    Sound.pluck(combo,Object.keys(tally));
     const g=S.guests[S.sel];
     if(g&&maxLen>=4){const b=maxLen>=5?8:4;g.gonul=clamp(g.gonul+b,0,100);floatAt(g.id,'+'+b+' gönül','var(--nar)');}
     if(combo>=1)setHint('<b>Zincirleme '+(combo+1)+'x!</b> Değerler artıyor.');
@@ -345,6 +369,7 @@ function endMove(){
     const fav=TRAITS[g.trait].fav,r=relOf(g);
     TK.forEach(t=>{
       let d=1.1;if(t===fav)d=2.6;
+      const dec=DECOR.find(x=>x.need===t);if(dec&&S.decor[dec.id])d*=.8;
       if(t==='cay'&&r.fr.length)d*=.5;
       if(t==='nota'&&r.rv.length)d*=1.6;
       g.needs[t]=clamp(g.needs[t]-d,0,100);
@@ -406,6 +431,170 @@ function armIdle(){
   },9000);
 }
 
+/* ---------- dekorasyon ---------- */
+const DECOR=[
+ {id:'kilim',name:'Yün kilim',cost:30,need:'yastik',desc:'Lobiye el dokuması kilim. Dinlenme %20 daha yavaş azalır.'},
+ {id:'sardunya',name:'Sardunya saksıları',cost:25,need:'sabun',desc:'Pencere önünde kırmızı sardunyalar. Temizlik %20 daha yavaş azalır.'},
+ {id:'sofra',name:'Bakır sini sofra',cost:35,need:'yemek',desc:'Yer sofrası ve minderler. Tokluk %20 daha yavaş azalır.'},
+ {id:'cini',name:'Duvar çinileri',cost:45,need:'cay',desc:'Duvar boyunca bir sıra çini. Sohbet %20 daha yavaş azalır.'},
+ {id:'avize',name:'Pirinç avize',cost:55,need:'nota',desc:'Tavandan sarkan sıcak ışıklı avize. Keyif %20 daha yavaş azalır.'},
+ {id:'ayna',name:'Nazarlı ayna',cost:40,need:null,desc:'Girişe nazar boncuklu yuvarlak ayna. Her gece konukların gönlü +5.'}
+];
+const WALLS={deniz:['Deniz','#bcd9de'],lavanta:['Lavanta','#d3cbe8'],nar:['Nar','#efc7bf'],kirec:['Kireç','#ece7dc'],zeytin:['Zeytin','#cfd6b4']};
+function renderLobby(){
+  const D=S.decor,U=S.up,wall=WALLS[S.wall][1];
+  let g='<svg viewBox="0 0 600 200" role="img" aria-label="Simge Hotel lobisi">';
+  g+='<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd0ea"/><stop offset="1" stop-color="#e6f3f6"/></linearGradient>'+
+     '<pattern id="wood" width="60" height="14" patternUnits="userSpaceOnUse"><rect width="60" height="14" fill="#b07a4c"/><rect y="13" width="60" height="1" fill="#8d5f38"/><rect x="30" width="1" height="14" fill="#8d5f38"/></pattern></defs>';
+  g+='<rect width="600" height="150" fill="'+wall+'"/><rect y="150" width="600" height="50" fill="url(#wood)"/><rect y="146" width="600" height="5" fill="#f4f1ea" opacity=".8"/>';
+  // pencere ve deniz
+  g+='<rect x="34" y="22" width="140" height="92" rx="6" fill="#f4f1ea"/><rect x="40" y="28" width="128" height="80" fill="url(#sky)"/>'+
+     '<circle cx="140" cy="50" r="11" fill="#ffd36b"/><rect x="40" y="78" width="128" height="30" fill="#2f86b5"/><path d="M40 84 q16 -5 32 0 t32 0 t32 0 t32 0" stroke="#bfe3f3" stroke-width="2" fill="none"/>'+
+     '<path d="M70 78 l10 -16 l8 16 z" fill="#f4f1ea"/><rect x="102" y="28" width="4" height="80" fill="#f4f1ea"/>';
+  if(U.bahce)g+='<path d="M30 22 q35 -14 74 -2 q38 -12 74 2" stroke="#4d7a2e" stroke-width="4" fill="none"/>'+[44,70,98,128,156].map((x,i)=>'<circle cx="'+x+'" cy="'+(24+(i%2)*4)+'" r="5" fill="#5a8f35"/><circle cx="'+(x+6)+'" cy="'+(31+(i%2)*3)+'" r="3.4" fill="#6b3d7a"/><circle cx="'+(x+2)+'" cy="'+(35+(i%2)*3)+'" r="3.4" fill="#7a4789"/>').join('');
+  if(D.sardunya)[52,90,128].forEach(x=>{g+='<path d="M'+(x-9)+' 112 h18 l-3 14 h-12 z" fill="#c0643c"/>'+[[-5,-4],[0,-9],[5,-4],[2,-2]].map(([dx,dy])=>'<circle cx="'+(x+dx)+'" cy="'+(110+dy)+'" r="4" fill="#d6323a"/>').join('')+'<circle cx="'+(x-7)+'" cy="111" r="3" fill="#4d7a2e"/><circle cx="'+(x+7)+'" cy="111" r="3" fill="#4d7a2e"/>';});
+  if(D.cini){for(let x=0;x<600;x+=20){const c=['#2a56b0','#13918e','#c8402c'][(x/20)%3];g+='<rect x="'+x+'" y="124" width="20" height="20" fill="#f8f6f0" stroke="#c9d3dc" stroke-width=".8"/><circle cx="'+(x+10)+'" cy="134" r="5" fill="none" stroke="'+c+'" stroke-width="2"/><circle cx="'+(x+10)+'" cy="134" r="1.6" fill="'+c+'"/>';}}
+  if(D.ayna)g+='<circle cx="236" cy="62" r="24" fill="#c49a45"/><circle cx="236" cy="62" r="19" fill="#dfeef3"/><path d="M226 54 l18 -6" stroke="#fff" stroke-width="3" opacity=".7"/><circle cx="236" cy="92" r="6" fill="#1f4fa3"/><circle cx="236" cy="92" r="3.6" fill="#fff"/><circle cx="236" cy="92" r="1.8" fill="#13243a"/>';
+  if(D.avize)g+='<line x1="320" y1="0" x2="320" y2="26" stroke="#8a6a2a" stroke-width="2"/><path d="M296 32 q24 14 48 0" stroke="#c49a45" stroke-width="4" fill="none"/><circle cx="320" cy="30" r="6" fill="#c49a45"/>'+[298,310,320,330,342].map(x=>'<circle cx="'+x+'" cy="'+(x===320?42:36)+'" r="3.4" fill="#ffd36b"/><circle cx="'+x+'" cy="'+(x===320?42:36)+'" r="9" fill="#ffd36b" opacity=".18"/>').join('');
+  // anahtar dolabı + resepsiyon
+  g+='<rect x="440" y="38" width="'+(S.rooms*22+12)+'" height="34" rx="4" fill="#8d5f38"/>';
+  for(let i=0;i<S.rooms;i++){const x=452+i*22;g+='<circle cx="'+x+'" cy="48" r="2" fill="#f4f1ea"/><rect x="'+(x-3)+'" y="52" width="6" height="12" rx="2" fill="'+(i<S.guests.length?'#c8402c':'#c49a45')+'"/><text x="'+x+'" y="70" font-size="6" text-anchor="middle" fill="#f4f1ea" font-family="sans-serif">'+(i+1)+'</text>';}
+  g+='<rect x="420" y="104" width="150" height="46" rx="4" fill="#7d522f"/><rect x="414" y="98" width="162" height="9" rx="3" fill="#9a6a3f"/><rect x="434" y="114" width="122" height="26" rx="3" fill="none" stroke="#9a6a3f" stroke-width="2"/>';
+  g+='<path d="M436 98 a7 7 0 0 1 14 0 z" fill="#c49a45"/><circle cx="443" cy="89" r="1.6" fill="#c49a45"/>';
+  if(U.semaver)g+='<path d="M528 98 h20 l-3 -6 v-20 q-7 -6 -14 0 v20 z" fill="#c4783a"/><rect x="533" y="62" width="10" height="6" rx="2" fill="#a8602c"/><path d="M548 86 h7" stroke="#a8602c" stroke-width="3"/><path d="M536 58 q-3 -6 2 -10 M541 58 q-3 -6 2 -10" stroke="#fff" stroke-width="1.6" fill="none" opacity=".8"/>';
+  if(U.gramofon)g+='<rect x="372" y="128" width="32" height="22" rx="2" fill="#6b4425"/><rect x="376" y="120" width="24" height="9" rx="2" fill="#4a2f1a"/><path d="M388 120 l4 -14 q14 -14 24 -6 q-6 12 -20 16 z" fill="#c49a45"/>'+(S.guests.length?'<text x="420" y="96" font-size="12" fill="#3d8848">♪</text><text x="410" y="84" font-size="10" fill="#3d8848">♫</text>':'');
+  if(D.kilim){g+='<rect x="190" y="160" width="170" height="32" rx="2" fill="#a8322c"/><rect x="196" y="165" width="158" height="22" fill="none" stroke="#e8c48a" stroke-width="2"/>';for(let i=0;i<6;i++){const x=212+i*26;g+='<path d="M'+x+' 176 l8 -7 l8 7 l-8 7 z" fill="'+(i%2?'#1f4fa3':'#e8c48a')+'"/>';}}
+  if(D.sofra)g+='<ellipse cx="96" cy="176" rx="40" ry="10" fill="#c4783a"/><ellipse cx="96" cy="173" rx="34" ry="7" fill="#d9925a"/><circle cx="84" cy="171" r="5" fill="#f4f1ea"/><circle cx="104" cy="170" r="5" fill="#f4f1ea"/><circle cx="84" cy="170" r="3" fill="#c8402c"/><circle cx="104" cy="169" r="3" fill="#3d8848"/><rect x="40" y="178" width="16" height="10" rx="4" fill="#2a56b0"/><rect x="136" y="178" width="16" height="10" rx="4" fill="#13918e"/>';
+  // konuklar
+  const spots=[[250,148],[300,152],[350,148],[200,152]];
+  S.guests.forEach((x,i)=>{
+    const [px,py]=spots[i%4],m=mood(x),sel=i===S.sel;
+    g+='<g class="guy" transform="translate('+px+' '+py+')">';
+    if(sel)g+='<ellipse cx="0" cy="2" rx="16" ry="4" fill="#1f4fa3" opacity=".35"/>';
+    g+='<rect x="-9" y="-30" width="18" height="30" rx="8" fill="'+x.color+'"/><circle cx="0" cy="-38" r="9" fill="#f0c9a2"/><path d="M-9 -40 a9 9 0 0 1 18 0 q-9 -4 -18 0z" fill="#3a2a20"/>';
+    g+='<circle cx="-3" cy="-37" r="1.1" fill="#3a2a20"/><circle cx="3" cy="-37" r="1.1" fill="#3a2a20"/>';
+    g+=m>=55?'<path d="M-3 -33 q3 2.5 6 0" stroke="#3a2a20" stroke-width="1.2" fill="none"/>':m>=35?'<path d="M-3 -32.5 h6" stroke="#3a2a20" stroke-width="1.2"/>':'<path d="M-3 -31.5 q3 -2.5 6 0" stroke="#3a2a20" stroke-width="1.2" fill="none"/>';
+    if(m>=70)g+='<path d="M0 -54 c-4 -5 -9 0 0 6 c9 -6 4 -11 0 -6z" fill="#d6323a"/>';
+    else if(m<35)g+='<text x="0" y="-51" font-size="12" text-anchor="middle" fill="#14243a" font-family="sans-serif" font-weight="700">!</text>';
+    g+='<text x="0" y="14" font-size="9" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="700" stroke="#14243a" stroke-width="2.4" paint-order="stroke">'+x.name+'</text></g>';
+  });
+  g+='</svg><span class="lobby-cap">Simge Hotel lobisi</span>';
+  let sc=$('lobby-scene');if(!sc){sc=document.createElement('div');sc.id='lobby-scene';$('lobby').prepend(sc);}
+  sc.innerHTML=g;
+}
+function showDecor(){
+  let h='<h2>Oteli dekore et</h2><p>Kasada <b>'+S.lira+' ₺</b> var. Aldığın her dekor lobide görünür ve konuklara iyi gelir.</p>';
+  h+='<h3>Duvar rengi</h3><div class="swatches" style="padding-bottom:18px">'+Object.entries(WALLS).map(([k,[n,c]])=>'<button type="button" class="sw'+(S.wall===k?' on':'')+'" data-wall="'+k+'" style="background:'+c+'" aria-label="'+n+'"><span>'+n+'</span></button>').join('')+'</div>';
+  h+='<h3>Dekorlar</h3><div class="decor-grid">'+DECOR.map(it=>{const own=S.decor[it.id];
+    return '<div class="item'+(own?' owned':'')+'"><b>'+it.name+'</b><p>'+it.desc+'</p>'+(own?'<p>Lobide</p>':'<button class="btn" type="button" data-decor="'+it.id+'"'+(S.lira<it.cost?' disabled':'')+'>'+it.cost+' ₺ öde</button>')+'</div>';}).join('')+'</div>';
+  h+='<button class="btn primary" type="button" id="b-decor-close">'+(S.pendingNight?'Gün sonu özetine dön':'Kapat')+'</button>';
+  openModal(h);
+  $('sheet').querySelectorAll('[data-wall]').forEach(b=>b.onclick=()=>{S.wall=b.dataset.wall;renderLobby();save();showDecor();});
+  $('sheet').querySelectorAll('[data-decor]').forEach(b=>b.onclick=()=>{
+    const it=DECOR.find(x=>x.id===b.dataset.decor);if(S.lira<it.cost)return;
+    S.lira-=it.cost;S.decor[it.id]=true;addLog(it.name+' lobiye yerleşti.');Sound.chime();
+    save();renderAll();showDecor();
+  });
+  $('b-decor-close').onclick=()=>{if(S.pendingNight)showNight();else closeModal();};
+}
+
+/* ---------- kediler ---------- */
+const CATS=[
+ {name:'Pamuk',fur:'#f6f3ec',spot:'#d9d2c3',x:150,y:192,w:190,d:'17s'},
+ {name:'Tarçın',fur:'#d98a45',spot:'#b8652a',x:380,y:196,w:-170,d:'23s'}
+];
+function catSVG(c,i){
+  const stripes=c.name==='Tarçın'?'<path d="M-4 -16 v6 M0 -17 v7 M4 -16 v6" stroke="'+c.spot+'" stroke-width="1.6"/>':'<ellipse cx="3" cy="-12" rx="5" ry="3.4" fill="'+c.spot+'"/>';
+  return '<g class="cat" data-cat="'+i+'" style="--d:'+c.d+';--w:'+c.w+'px" transform="translate('+c.x+' '+c.y+')"><g class="walk"><g class="flip">'+
+   '<title>'+c.name+' (sevmek için dokun)</title>'+
+   '<rect x="-30" y="-36" width="60" height="40" fill="transparent"/>'+
+   '<path class="tail" d="M12 -8 q14 -2 12 -18" stroke="'+c.fur+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+   '<ellipse cx="0" cy="-10" rx="14" ry="8" fill="'+c.fur+'" stroke="rgba(0,0,0,.25)" stroke-width=".8"/>'+stripes+
+   '<rect x="-10" y="-5" width="3.4" height="7" rx="1.5" fill="'+c.fur+'"/><rect x="6" y="-5" width="3.4" height="7" rx="1.5" fill="'+c.fur+'"/>'+
+   '<circle cx="-14" cy="-17" r="7.5" fill="'+c.fur+'" stroke="rgba(0,0,0,.25)" stroke-width=".8"/>'+
+   '<path d="M-20 -21 l1 -8 l5 5 z M-13 -24 l5 -5 l1 8 z" fill="'+c.fur+'" stroke="rgba(0,0,0,.25)" stroke-width=".8"/>'+
+   '<circle cx="-17" cy="-18" r="1.1" fill="#2b3a22"/><circle cx="-11.5" cy="-18" r="1.1" fill="#2b3a22"/><path d="M-15.3 -15.4 l1 1 l1 -1" stroke="#c4626a" stroke-width="1" fill="none"/>'+
+   '</g></g></g>';
+}
+function buildCats(){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 600 200');svg.setAttribute('class','cats');svg.setAttribute('aria-label','Otelin kedileri');
+  svg.innerHTML=CATS.map(catSVG).join('');
+  $('lobby').appendChild(svg);
+  svg.addEventListener('click',e=>{
+    const el=e.target.closest('.cat');if(!el)return;
+    const c=CATS[+el.dataset.cat],g=S.guests[S.sel];
+    Sound.meow();
+    const box=$('lobby').getBoundingClientRect(),r=el.getBoundingClientRect();
+    const h=document.createElement('div');h.className='float';h.style.color='var(--nar)';
+    h.style.left=(r.left+r.width/2-30)+'px';h.style.top=(r.top-10)+'px';
+    if(S.petted[c.name]){h.textContent=c.name+' uyukluyor';document.body.appendChild(h);setTimeout(()=>h.remove(),1100);return;}
+    S.petted[c.name]=true;
+    h.textContent='mırr ♥';document.body.appendChild(h);setTimeout(()=>h.remove(),1100);
+    if(g){
+      const bonus=g.trait==='titiz'?4:12;
+      g.needs.nota=clamp(g.needs.nota+bonus,0,100);g.gonul=clamp(g.gonul+(g.trait==='titiz'?0:2),0,100);
+      addLog(g.name+', '+acc(c.name)+' sevdi.'+(g.trait==='titiz'?' Ama hemen elini yıkamaya koştu.':' Keyfi yerine geldi.'));
+      floatAt(g.id,'+'+bonus+' Keyif','var(--t-nota)');
+    }else addLog(c.name+' boş lobide güneşlendi.');
+    el.classList.add('sleepy');setTimeout(()=>el.classList.remove('sleepy'),4000);
+    renderAll();save();
+  });
+}
+
+/* ---------- ses ---------- */
+const Sound=(()=>{
+  let ctx=null,master=null,delay=null,on=false,timer=null,next=0,step=0;
+  const CH=[[50,57,62,65],[46,53,58,62],[53,57,60,65],[48,55,60,64]]; // Dm, Bb, F, C (midi)
+  const SCALE=[62,64,65,67,69,72,74,76,77,79,81];
+  const hz=m=>440*Math.pow(2,(m-69)/12);
+  function init(){
+    if(ctx)return;
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    ctx=new AC();master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);
+    delay=ctx.createDelay(1);delay.delayTime.value=.36;const fb=ctx.createGain();fb.gain.value=.32;const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1800;
+    delay.connect(lp);lp.connect(fb);fb.connect(delay);lp.connect(master);
+  }
+  function tone(m,t,dur,type,vol,toDelay){
+    const o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();
+    o.type=type;o.frequency.value=hz(m);f.type='lowpass';f.frequency.value=type==='triangle'?2400:900;
+    g.gain.setValueAtTime(0,t);
+    if(dur>1){g.gain.linearRampToValueAtTime(vol,t+dur*.35);g.gain.linearRampToValueAtTime(0,t+dur);}
+    else{g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);}
+    o.connect(f);f.connect(g);g.connect(master);if(toDelay)g.connect(delay);
+    o.start(t);o.stop(t+dur+.05);
+  }
+  function tick(){
+    while(next<ctx.currentTime+.4){
+      const bar=Math.floor(step/8)%4,beat=step%8;
+      if(beat===0)CH[bar].forEach((m,i)=>tone(m,next,4.4,i?'sine':'triangle',i?.05:.07,false));
+      if(Math.random()<(beat%2?.25:.5)){
+        const chordTones=CH[bar].map(x=>x+12);
+        const m=Math.random()<.6?chordTones[Math.floor(Math.random()*4)]:SCALE[Math.floor(Math.random()*SCALE.length)];
+        tone(m,next,.9,'triangle',.06,true);
+      }
+      next+=.5;step++;
+    }
+  }
+  function start(){
+    init();if(!ctx)return false;ctx.resume();
+    master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setTargetAtTime(.5,ctx.currentTime,.8);
+    next=ctx.currentTime+.1;clearInterval(timer);timer=setInterval(tick,100);return true;
+  }
+  function stop(){if(!ctx)return;master.gain.setTargetAtTime(0,ctx.currentTime,.3);clearInterval(timer);timer=null;}
+  function ui(){const b=$('b-sound');b.textContent='Müzik: '+(on?'açık':'kapalı');b.setAttribute('aria-pressed',String(on));}
+  return {
+    toggle(){on=!on;if(on){if(!start())on=false;}else stop();ui();try{localStorage.setItem('konuk-sound',on?'1':'0');}catch(e){}},
+    wantsOn(){try{return localStorage.getItem('konuk-sound')==='1';}catch(e){return false;}},
+    pluck(combo,types){if(!on||!ctx)return;const t=ctx.currentTime;types.forEach((ty,i)=>{const m=[74,76,79,81,84][TK.indexOf(ty)]+Math.min(combo,4)*2;tone(m,t+i*.06,.35,'sine',.09,true);});},
+    meow(){if(!on||!ctx)return;const t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();o.type='sawtooth';f.type='bandpass';f.frequency.value=1400;f.Q.value=3;o.frequency.setValueAtTime(620,t);o.frequency.linearRampToValueAtTime(900,t+.12);o.frequency.linearRampToValueAtTime(560,t+.42);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.12,t+.05);g.gain.exponentialRampToValueAtTime(.001,t+.45);o.connect(f);f.connect(g);g.connect(master);o.start(t);o.stop(t+.5);},
+    chime(){if(!on||!ctx)return;const t=ctx.currentTime;[79,83,86].forEach((m,i)=>tone(m,t+i*.09,.6,'sine',.08,true));},
+    ui
+  };
+})();
+// ses tercihi açıksa ilk dokunuşta müziği başlat (tarayıcılar sesi ancak bir etkileşimden sonra açar)
+if(Sound.wantsOn())document.addEventListener('pointerdown',function once(e){document.removeEventListener('pointerdown',once,true);if(e.target.closest('#b-sound'))return;Sound.toggle();},true);
+
 /* ---------- gece ---------- */
 const QUOTES={
  5:['Kendi evimdeymiş gibi hissettim. Seneye yine buradayım.','Ev sahibi her isteğimi daha ben söylemeden anladı.','Ayvalık’ın en sıcak kapısı burası.'],
@@ -415,8 +604,13 @@ const QUOTES={
  1:['Bir daha gelmem.','Kimse benimle ilgilenmedi.']
 };
 const FAV_LINE={yemek:'Zeytinyağlılar efsaneydi.',cay:'Akşam sohbetleri bitmesin istedim.',yastik:'Hayatımın en güzel uykusunu çektim.',sabun:'Her yer pırıl pırıldı.',nota:'Avludaki müzik gecelerine bayıldım.'};
-const POS=['{a} ile {b} avluda tavla oynadı.','{a}, {b}’ye memleketinden hikâyeler anlattı.','{a} ile {b} gün batımında sahile yürüdü.','{a} ile {b} aynı şarkıyı mırıldandı.'];
-const NEG=['{a}, {b}’nin gece yarısı gürültüsünden şikâyet etti.','{a} ile {b} son börek için tartıştı.','{a}, {b}’nin dağınıklığına söylendi.'];
+function lastV(w){if(w==='Kemal')return 'e';const m=w.toLowerCase().match(/[aeıioöuü](?=[^aeıioöuü]*$)/);return m?m[0]:'e';}
+const endsV=w=>/[aeıioöuü]$/i.test(w);
+function gen(w){const v=lastV(w),x={a:'ın',ı:'ın',e:'in',i:'in',o:'un',u:'un',ö:'ün',ü:'ün'}[v];return w+'’'+(endsV(w)?'n':'')+x;}
+function dat(w){const v=lastV(w),x='aıou'.includes(v)?'a':'e';return w+'’'+(endsV(w)?'y':'')+x;}
+function acc(w){const v=lastV(w),x={a:'ı',ı:'ı',e:'i',i:'i',o:'u',u:'u',ö:'ü',ü:'ü'}[v];return w+'’'+(endsV(w)?'y':'')+x;}
+const POS=['{a} ile {b} avluda tavla oynadı.','{a}, {b:dat} memleketinden hikâyeler anlattı.','{a} ile {b} gün batımında sahile yürüdü.','{a} ile {b} aynı şarkıyı mırıldandı.'];
+const NEG=['{a}, {b:gen} gece yarısı gürültüsünden şikâyet etti.','{a} ile {b} son börek için tartıştı.','{a}, {b:gen} dağınıklığına söylendi.'];
 
 function night(){
   if(document.getElementById('modal').hidden===false)return;
@@ -430,11 +624,18 @@ function night(){
     const before=S.rel[k]||0,delta=comp*22+ri(-12,12);
     S.rel[k]=clamp(before+delta,-100,100);
     const tpl=delta>=0?rnd(POS):rnd(NEG),pair=Math.random()<.5?[a,b]:[b,a];
-    let s=tpl.replace('{a}',pair[0].name).replace('{b}',pair[1].name);
+    let s=tpl.replace('{a}',pair[0].name).replace('{b:dat}',dat(pair[1].name)).replace('{b:gen}',gen(pair[1].name)).replace('{b}',pair[1].name);
     if(before<30&&S.rel[k]>=30)s+=' Artık arkadaşlar.';
     if(before>-30&&S.rel[k]<=-30)s+=' Aralarında soğuk rüzgârlar esiyor.';
     lines.social.push(s);addLog(s);
   }
+  CATS.forEach(cat=>{
+    if(!S.guests.length||Math.random()>.55)return;
+    const g=rnd(S.guests);let s;
+    if(g.trait==='titiz'){g.gonul=clamp(g.gonul-3,0,100);s=cat.name+' gece '+gen(g.name)+' yatağına kıvrıldı. '+g.name+' sabah tüy temizlemekten şikâyetçi.';}
+    else{g.gonul=clamp(g.gonul+5,0,100);s=cat.name+' gece '+gen(g.name)+' ayak ucunda mırlayarak uyudu. '+g.name+' çok mutlu.';}
+    lines.social.push(s);addLog(s);
+  });
   S.guests.forEach(g=>{
     g.needs.yastik=clamp(g.needs.yastik+40,0,100);g.needs.yemek=clamp(g.needs.yemek-12,0,100);g.needs.sabun=clamp(g.needs.sabun-6,0,100);
     g.nights--;
@@ -454,6 +655,7 @@ function night(){
     const chance=S.guests.length===0?1:.35+r*.1;
     if(Math.random()<chance){const g=newGuest();S.guests.push(g);lines.inn.push(g);addLog(g.name+' kapıyı çaldı. '+g.origin+', '+TRAITS[g.trait].label.toLowerCase()+' biri.');}
   }
+  if(S.decor.ayna)S.guests.forEach(g=>g.gonul=clamp(g.gonul+5,0,100));
   S.guests.forEach(g=>g.wish=makeWish(g));
   S.sel=0;
   let winNow=false;
@@ -476,6 +678,7 @@ function showNight(){
     const own=S.up[it.id];
     return '<div class="item'+(own?' owned':'')+'"><b>'+it.name+'</b><p>'+it.desc+'</p>'+(own?'<p>Alındı</p>':'<button class="btn" type="button" data-buy="'+it.id+'"'+(S.lira<it.cost?' disabled':'')+'>'+it.cost+' ₺ öde</button>')+'</div>';
   }).join('')+'</div>';
+  h+='<button class="btn" type="button" id="b-decor2">Oteli dekore et</button>';
   h+='<button class="btn primary" type="button" id="b-morning">Sabah oldu, '+(day+1)+'. güne başla</button>';
   openModal(h);
   $('sheet').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{
@@ -483,8 +686,9 @@ function showNight(){
     S.lira-=it.cost;S.up[it.id]=true;if(it.id==='oda')S.rooms=4;
     addLog(it.name+' alındı.');save();showNight();renderStats();
   });
+  $('b-decor2').onclick=showDecor;
   $('b-morning').onclick=()=>{
-    S.day++;S.move=0;S.pendingNight=null;
+    S.day++;S.move=0;S.pendingNight=null;S.petted={};
     if(S.rooms>S.guests.length&&S.up.oda&&!S.guests.length){}
     addLog(S.day+'. gün başladı.');closeModal();renderAll();save();
   };
@@ -527,7 +731,7 @@ function renderGuests(){
 }
 function renderLog(){$('log').innerHTML=S.log.map(l=>'<li><small>'+l.t+'</small>'+l.text+'</li>').join('');}
 function renderAll(){
-  renderStats();renderGuests();renderBoard();renderLog();armIdle();
+  renderStats();renderGuests();renderBoard();renderLog();renderLobby();armIdle();
   const g=S.guests[S.sel];
   if(!busy)setHint(g?'Seçili konuk: <b>'+g.name+'</b>. Eşleştirdiğin taşlar ona gider, müzik ise herkese yayılır. Başka konuğa geçmek için kartına dokun.':'Bugün otel boş. Taşları eşleştirip günü bitirebilirsin.');
 }
@@ -540,6 +744,8 @@ function showHelp(){
   '<li>Her konuğun bir huyu var. Sevdiği şey ona daha çok iyi gelir ama o ihtiyaç daha hızlı azalır.</li>'+
   '<li>İhtiyaçları dolu kalan konuğun <b>gönlü</b> artar. Gönlü sıfıra inen konuk küsüp gider.</li>'+
   '<li>Akşam konuklar birbiriyle arkadaş olur ya da kapışır. Arkadaşı olanın sohbet ihtiyacı yavaşlar, gergin olanın keyfi çabuk kaçar.</li>'+
+  '<li>Otelin iki kedisi var: <b>Pamuk</b> ve <b>Tarçın</b>. Lobide bir kediye dokunursan seçili konuğun keyfi artar. Her kedi günde bir kez sevilmek ister. Geceleri konukların yanında uyuyabilirler.</li>'+
+  '<li><b>Dekorasyon</b> düğmesinden duvar rengini seç, lobiye kilim, çini, avize gibi dekorlar al. Her dekor bir ihtiyacın daha yavaş azalmasını sağlar.</li>'+
   '<li>Ayrılan konuklar yorum yazar. Kazandığın parayla oteli geliştir. Hedef: beş yıldızlı otel.</li></ul>'+
   '<button class="btn primary" type="button" id="b-close">Başlayalım</button>');
   $('b-close').onclick=()=>{S.seenHelp=true;save();closeModal();};
@@ -548,7 +754,7 @@ function save(){
   try{S.grid=cells.map(row=>row.map(c=>c?c.t:null));localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}
 }
 function loadFrom(obj){
-  S=obj;
+  S=obj;S.decor=S.decor||{};S.petted=S.petted||{};S.wall=S.wall||'deniz';
   cells=S.grid.map(row=>row.map(t=>newTile(t||rnd(TK))));
   if(findGroups().length||!findMove())genGrid();
 }
@@ -582,6 +788,8 @@ $('guests').addEventListener('keydown',e=>{
   if(e.key!=='Enter'&&e.key!==' ')return;const c=e.target.closest('.guest[data-i]');if(!c||busy)return;e.preventDefault();S.sel=+c.dataset.i;renderAll();
 });
 $('b-help').onclick=showHelp;
+$('b-decor').onclick=()=>{if(!busy)showDecor();};
+$('b-sound').onclick=()=>{Sound.toggle();};
 let confirmNew=false;
 $('b-new').onclick=()=>{
   if(!confirmNew){confirmNew=true;$('b-new').textContent='Emin misin? Tekrar bas';setTimeout(()=>{confirmNew=false;$('b-new').textContent='Yeni oyun';},3000);return;}
@@ -594,6 +802,7 @@ function start(data){
   if(!saved){try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(e){}}
   if(saved&&saved.grid)loadFrom(saved);else freshState();
   renderAll();
+  buildCats();
   if(S.pendingNight)showNight();else if(!S.seenHelp)showHelp();
 }
 window.claude?.hot?.snapshot?.(()=>{save();return {S};});
