@@ -166,6 +166,34 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
 .rooms-sum div{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px}
 .rooms-sum b{display:block;margin-bottom:2px}
 @media (max-width:760px){.plan-wrap{grid-template-columns:minmax(0,1fr)}.cat-list{flex-direction:row;overflow-x:auto;max-height:none}.ci{flex:0 0 210px}}
+.radio-box{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:45;width:300px;max-width:calc(100% - 32px);background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.radio-head{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:13px}
+.radio-head a{color:var(--accent);font-weight:700}
+.radio-box iframe{display:block;width:100%;aspect-ratio:16/9;border:0}
+.nick-in{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);width:100%;max-width:320px}
+.err{color:var(--bad);font-weight:700;margin:0;font-size:13px}
+.room-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.room-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.room-btn:hover,.room-btn.on{border-color:var(--accent)}
+.room-btn b{font-family:var(--f-display);font-size:16px}.room-btn small{color:var(--muted)}
+.chat-panel{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:44;width:340px;max-width:calc(100% - 32px);background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.22);display:flex;flex-direction:column;overflow:hidden}
+.cp-head{display:flex;gap:6px;align-items:center;padding:8px;border-bottom:1px solid var(--line)}
+.cp-head .btn{padding:5px 10px;font-size:12.5px}
+.cp-title{flex:1;min-width:0;text-align:left;background:none;border:0;font-weight:800;font-family:var(--f-display);font-size:14px;padding:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-panel.closed .cp-body{display:none}
+.cp-body{display:flex;flex-direction:column;gap:6px;padding:8px}
+.cp-people{display:flex;flex-wrap:wrap;gap:4px;max-height:66px;overflow:auto}
+.cp-person{font-size:12px;font-weight:700;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
+.cp-person.me{border-color:var(--accent)}
+.cp-person small{font-weight:600;color:var(--muted)}
+.cp-msgs{list-style:none;margin:0;padding:0;height:min(260px,38vh);overflow:auto;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+.cp-msgs li{overflow-wrap:anywhere}
+.cp-msgs li small{color:var(--muted);margin-right:6px;font-variant-numeric:tabular-nums}
+.cp-msgs li.sys{color:var(--muted);font-style:italic;font-size:12.5px}
+.cp-status{margin:0;font-size:12.5px;color:var(--bad);font-weight:700}
+.cp-form{display:flex;gap:6px}
+.cp-form input{flex:1;min-width:0;font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.cp-form .btn{padding:6px 12px}
 .decor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
 .sw{width:44px;height:44px;border-radius:12px;border:2px solid var(--line);position:relative}
@@ -199,6 +227,8 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
       <button class="btn" id="b-build" type="button">Kat planı</button>
       <button class="btn" id="b-decor" type="button">Dekorasyon</button>
       <button class="btn" id="b-sound" type="button" aria-pressed="false">Müzik: kapalı</button>
+      <button class="btn" id="b-radio" type="button" aria-pressed="false">Radyo</button>
+      <button class="btn" id="b-chat" type="button">Sohbet odaları</button>
       <button class="btn" id="b-help" type="button">Nasıl oynanır</button>
       <button class="btn" id="b-new" type="button">Yeni oyun</button>
     </div>
@@ -365,6 +395,8 @@ async function cascade(){
     for(const [r,c] of set.values()){const t=cells[r][c].t;tally[t]=(tally[t]||0)+1;}
     for(const t in tally)deliver(t,tally[t],combo);
     Sound.pluck(combo,Object.keys(tally));
+    S.todayTiles=(S.todayTiles||0)+set.size;
+    bus('match',{len:maxLen,combo,count:set.size});
     const g=S.guests[S.sel];
     if(g&&maxLen>=4){const b=maxLen>=5?8:4;g.gonul=clamp(g.gonul+b,0,100);floatAt(g.id,'+'+b+' gönül','var(--nar)');}
     if(combo>=1)setHint('<b>Zincirleme '+(combo+1)+'x!</b> Değerler artıyor.');
@@ -400,6 +432,7 @@ function give(g,t,v,n){
 }
 function endMove(){
   S.move++;
+  bus('move',stats());
   S.guests.forEach(g=>{
     const fav=TRAITS[g.trait].fav,r=relOf(g);
     TK.forEach(t=>{
@@ -851,7 +884,8 @@ const Sound=(()=>{
   function stop(){if(!ctx)return;master.gain.setTargetAtTime(0,ctx.currentTime,.3);clearInterval(timer);timer=null;}
   function ui(){const b=$('b-sound');b.textContent='Müzik: '+(on?'açık':'kapalı');b.setAttribute('aria-pressed',String(on));}
   return {
-    toggle(){on=!on;if(on){if(!start())on=false;}else stop();ui();try{localStorage.setItem('konuk-sound',on?'1':'0');}catch(e){}},
+    isOn(){return on;},
+    toggle(){if(!on&&radioOn)$('b-radio').click();on=!on;if(on){if(!start())on=false;}else stop();ui();try{localStorage.setItem('konuk-sound',on?'1':'0');}catch(e){}},
     wantsOn(){try{return localStorage.getItem('konuk-sound')==='1';}catch(e){return false;}},
     pluck(combo,types){if(!on||!ctx)return;const t=ctx.currentTime;types.forEach((ty,i)=>{const m=[77,79,81,84,86][TK.indexOf(ty)]+Math.min(combo,4)*2;tone(m,t+i*.06,.35,'sine',.09,true);});},
     meow(){if(!on||!ctx)return;const t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();o.type='sawtooth';f.type='bandpass';f.frequency.value=1400;f.Q.value=3;o.frequency.setValueAtTime(620,t);o.frequency.linearRampToValueAtTime(900,t+.12);o.frequency.linearRampToValueAtTime(560,t+.42);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.12,t+.05);g.gain.exponentialRampToValueAtTime(.001,t+.45);o.connect(f);f.connect(g);g.connect(master);o.start(t);o.stop(t+.5);},
@@ -928,6 +962,7 @@ function night(){
   let winNow=false;
   if(!S.won&&S.reviews.length>=8&&rep()>=4.5){S.won=true;winNow=true;}
   S.pendingNight={lines,winNow,day:S.day};
+  bus('day',{...stats(),pay:lines.pay,reviews:lines.out.map(r=>r.stars)});S.todayTiles=0;
   save();
   showNight();
 }
@@ -1012,6 +1047,7 @@ function showHelp(){
   '<li>İhtiyaçları dolu kalan konuğun <b>gönlü</b> artar. Gönlü sıfıra inen konuk küsüp gider.</li>'+
   '<li>Akşam konuklar birbiriyle arkadaş olur ya da kapışır. Arkadaşı olanın sohbet ihtiyacı yavaşlar, gergin olanın keyfi çabuk kaçar.</li>'+
   '<li>Otelin iki kedisi var: <b>Pamuk</b> ve <b>Tarçın</b>. Lobide bir kediye dokunursan seçili konuğun keyfi artar. Her kedi günde bir kez sevilmek ister. Geceleri konukların yanında uyuyabilirler.</li>'+
+  '<li><b>Sohbet odaları</b> düğmesiyle bir rumuz seçip odaya gir. Odadakilerle yazışır, herkes kendi bulmacasını çözerken oda skorunu birlikte büyütürsünüz.</li>'+
   '<li><b>Kat planı</b> düğmesiyle otelin planını aç. Odalara yatak, lavabo, radyo, lobiye kanepe, piyano, yemek masası gibi eşyalar yerleştir. Her konuk kendi odasındaki eşyalardan tam, lobidekilerden yarım faydalanır.</li>'+
   '<li><b>Dekorasyon</b> düğmesinden duvar rengini seç, lobiye kilim, çini, avize gibi dekorlar al. Her dekor bir ihtiyacın daha yavaş azalmasını sağlar.</li>'+
   '<li>Ayrılan konuklar yorum yazar. Kazandığın parayla oteli geliştir. Hedef: beş yıldızlı otel.</li></ul>'+
@@ -1075,6 +1111,135 @@ function start(data){
   if(S.pendingNight)showNight();else if(!S.seenHelp)showHelp();
 }
 window.claude?.hot?.snapshot?.(()=>{save();return {S};});
+function stats(){return {day:S.day,rep:+rep().toFixed(1),lira:S.lira,guests:S.guests.length,tiles:S.todayTiles||0,reviews:S.reviews.length};}
+function bus(type,data){try{window.dispatchEvent(new CustomEvent('konuk:'+type,{detail:data}));}catch(e){}}
+window.KonukGame={stats,openModal,closeModal,get nick(){try{return localStorage.getItem('konuk-nick')||'';}catch(e){return '';}}};
+/* ---------- radyo ---------- */
+const RADIO_ID='sVUYboCn9KY',RADIO_URL='https://www.youtube.com/watch?v=sVUYboCn9KY&list=RDATgy&start_radio=1';
+const IN_CLAUDE=!!window.claude;
+let radioOn=false;
+$('b-radio').onclick=()=>{
+  let box=$('radio-box');
+  if(IN_CLAUDE){
+    openModal('<h2>Radyo</h2><p>Claude içindeki önizleme YouTube oynatıcısını açamıyor. Radyoyu oyunun herkese açık sürümünde dinleyebilir ya da YouTube’da açabilirsin.</p><p><a href="https://simgetasdemir.github.io/konuk/" target="_blank" rel="noopener">simgetasdemir.github.io/konuk</a><br><a href="'+RADIO_URL+'" target="_blank" rel="noopener">Radyoyu YouTube’da aç</a></p><button class="btn primary" type="button" id="b-rc">Tamam</button>');
+    $('b-rc').onclick=closeModal;return;
+  }
+  radioOn=!radioOn;
+  if(radioOn){
+    if(Sound.isOn())Sound.toggle();
+    box=document.createElement('div');box.id='radio-box';box.className='radio-box';
+    box.innerHTML='<div class="radio-head"><b>Radyo</b><a href="'+RADIO_URL+'" target="_blank" rel="noopener">YouTube’da aç</a></div><iframe src="https://www.youtube-nocookie.com/embed/'+RADIO_ID+'?autoplay=1&list=RD'+RADIO_ID+'&rel=0" title="Radyo" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+    document.body.appendChild(box);
+  }else box?.remove();
+  $('b-radio').setAttribute('aria-pressed',String(radioOn));$('b-radio').textContent=radioOn?'Radyo: açık':'Radyo';
+};
+/* ---------- sohbet odaları (Claude paylaşımı) ---------- */
+const CHAT_ROOMS=[{id:'lobi-kafe',name:'Lobi Kafe'},{id:'cay-bahcesi',name:'Çay Bahçesi'},{id:'caz-kulubu',name:'Caz Kulübü'},{id:'bulmaca-ustalari',name:'Bulmaca Ustaları'}];
+const Chat={room:null,db:null,ready:false,cur:null,unsub:null,msgs:[],lastSend:0,open:false};
+(async()=>{
+  if(!window.claude||!window.claude.use)return;
+  try{
+    const [r,d]=await Promise.all([window.claude.use('room'),window.claude.use('db')]);
+    Chat.room=r;Chat.db=d;Chat.ready=!!(r&&d);
+    if(r)r.onPeers(()=>{renderChatPanel();if(!$('modal').hidden&&$('room-list'))renderRoomList();},()=>{});
+  }catch(e){}
+})();
+const cleanNick=v=>String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').trim().slice(0,16);
+const roomName=id=>(CHAT_ROOMS.find(r=>r.id===id)||{name:id}).name;
+function peersIn(id){return Chat.room?Chat.room.peers().filter(p=>p.presence&&p.presence.room===id):[];}
+function openChat(){
+  if(!Chat.ready){
+    openModal('<h2>Sohbet odaları</h2><p>'+(window.claude?'Sohbet odalarına bağlanılamadı. Oyunun Claude’da açık ve oturumunun açık olduğundan emin olup sayfayı yenile.':'Sohbet odaları, oyunun Claude üzerinden paylaşılan sürümünde çalışıyor. Bu herkese açık sürümde sadece tek başına oynayabilirsin.')+'</p><button class="btn primary" type="button" id="b-cc">Tamam</button>');
+    $('b-cc').onclick=closeModal;return;
+  }
+  const nick=KonukGame.nick;
+  openModal('<h2>Sohbet odaları</h2><p>Bir rumuz seç ve bir odaya gir. Odadakiler birbirinin mesajlarını, otel bilgilerini ve büyük hamlelerini görür. Herkes kendi bulmacasını çözer, oda skoru birlikte toplanır.</p>'+
+    '<label for="nick-in"><b>Rumuzun</b></label><input id="nick-in" class="nick-in" maxlength="16" autocomplete="off" placeholder="örneğin Kedisever" value="'+nick.replace(/"/g,'&quot;')+'">'+
+    '<p id="nick-err" class="err" hidden>Rumuz 2 ile 16 karakter arasında olmalı (harf, rakam, boşluk, nokta, tire).</p>'+
+    '<h3>Odalar</h3><div id="room-list" class="room-list"></div>'+
+    '<button class="btn" type="button" id="b-cc">Vazgeç</button>');
+  renderRoomList();
+  $('b-cc').onclick=closeModal;
+  $('room-list').addEventListener('click',e=>{
+    const b=e.target.closest('[data-room]');if(!b)return;
+    const n=cleanNick($('nick-in').value);
+    if(n.length<2){$('nick-err').hidden=false;$('nick-in').focus();return;}
+    try{localStorage.setItem('konuk-nick',n);}catch(_){}
+    Chat.nick=n;closeModal();joinChat(b.dataset.room);
+  });
+}
+function renderRoomList(){
+  const el=$('room-list');if(!el)return;
+  el.innerHTML=CHAT_ROOMS.map(r=>{const c=peersIn(r.id).length;return '<button type="button" class="room-btn'+(Chat.cur===r.id?' on':'')+'" data-room="'+r.id+'"><b>'+r.name+'</b><small>'+(c?c+' kişi içeride':'Şu an boş')+'</small></button>';}).join('');
+}
+function joinChat(id){
+  if(Chat.unsub){Chat.unsub();Chat.unsub=null;}
+  Chat.cur=id;Chat.msgs=[];Chat.open=true;
+  Chat.room.presence({nick:Chat.nick,room:id,st:KonukGame.stats()}).catch(()=>{});
+  const q=Chat.db.collection('chat/'+id+'/msgs').orderBy('ts','desc').limit(60);
+  Chat.status='Mesajlar yükleniyor…';
+  const t=setTimeout(()=>{if(Chat.status)Chat.status='Mesajlar yüklenemedi. Yine de yazabilirsin.';renderChatPanel();},10000);
+  Chat.unsub=q.onSnapshot(snap=>{clearTimeout(t);Chat.status=null;Chat.msgs=snap.docs.map(d=>d.data()).reverse();renderChatPanel(true);},err=>{clearTimeout(t);Chat.status='Mesajlar okunamadı.';renderChatPanel();});
+  renderChatPanel(true);
+  chatPost('sys',Chat.nick+' odaya girdi.');
+}
+function leaveChat(){
+  if(Chat.cur)chatPost('sys',Chat.nick+' odadan ayrıldı.');
+  if(Chat.unsub){Chat.unsub();Chat.unsub=null;}
+  Chat.cur=null;Chat.room&&Chat.room.presence({room:null}).catch(()=>{});
+  $('chat-panel')?.remove();
+}
+async function chatPost(type,text){
+  if(!Chat.cur||!Chat.db)return false;
+  try{await Chat.db.collection('chat/'+Chat.cur+'/msgs').add({type,nick:Chat.nick,text:String(text).slice(0,300),ts:Date.now()});return true;}
+  catch(e){if(type==='msg'){Chat.status=/permission|not_granted|denied|forbidden/i.test((e&&(e.code||''))+' '+(e&&e.message||''))?'Bu odaya yazma iznin yok. Oyunu paylaşan kişiden seni “Katkıda bulunan” yapmasını iste.':'Mesaj gönderilemedi, birazdan tekrar dene.';renderChatPanel();}return false;}
+}
+function renderChatPanel(scroll){
+  if(!Chat.cur)return;
+  let p=$('chat-panel');
+  if(!p){
+    p=document.createElement('section');p.id='chat-panel';p.className='chat-panel';p.setAttribute('aria-label','Sohbet odası');
+    p.innerHTML='<header class="cp-head"><button type="button" class="cp-title" id="cp-toggle"></button><button type="button" class="btn" id="cp-rooms">Oda değiştir</button><button type="button" class="btn" id="cp-leave">Çık</button></header>'+
+      '<div class="cp-body"><div class="cp-people" id="cp-people"></div><ol class="cp-msgs" id="cp-msgs"></ol><p class="cp-status" id="cp-status" hidden></p>'+
+      '<form class="cp-form" id="cp-form"><input id="cp-in" maxlength="300" autocomplete="off" placeholder="Bir mesaj yaz" aria-label="Mesaj"><button class="btn primary" type="submit">Gönder</button></form></div>';
+    document.body.appendChild(p);
+    $('cp-toggle').onclick=()=>{Chat.open=!Chat.open;renderChatPanel(true);};
+    $('cp-rooms').onclick=()=>openChat();
+    $('cp-leave').onclick=leaveChat;
+    $('cp-form').addEventListener('submit',async e=>{
+      e.preventDefault();const inp=$('cp-in'),v=inp.value.trim();if(!v)return;
+      if(Date.now()-Chat.lastSend<800)return;Chat.lastSend=Date.now();
+      inp.value='';Chat.status=null;if(!(await chatPost('msg',v)))inp.value=v;
+    });
+  }
+  p.classList.toggle('closed',!Chat.open);
+  const people=peersIn(Chat.cur);
+  const total=people.reduce((a,x)=>a+((x.presence.st&&+x.presence.st.tiles)||0),0);
+  $('cp-toggle').textContent=roomName(Chat.cur)+' · '+people.length+' kişi · oda skoru '+total+(Chat.open?' ▾':' ▴');
+  const pe=$('cp-people');pe.innerHTML='';
+  people.slice().sort((a,b)=>((b.presence.st||{}).tiles||0)-((a.presence.st||{}).tiles||0)).forEach(x=>{
+    const st=x.presence.st||{},d=document.createElement('span');d.className='cp-person'+(x.isMe?' me':'');
+    d.textContent=cleanNick(x.presence.nick)||'Misafir';
+    const sm=document.createElement('small');sm.textContent=(x.isMe?' (sen)':'')+' · '+(st.tiles||0)+' taş · Gün '+(st.day||1)+(st.rep?' · '+st.rep+'★':'');
+    d.appendChild(sm);pe.appendChild(d);
+  });
+  const ol=$('cp-msgs');ol.innerHTML='';
+  if(!Chat.msgs.length){const li=document.createElement('li');li.className='sys';li.textContent='Henüz mesaj yok. İlk merhabayı sen de.';ol.appendChild(li);}
+  Chat.msgs.forEach(m=>{
+    const li=document.createElement('li');li.className=m.type==='sys'?'sys':'';
+    const tm=new Date(+m.ts||0);const hh=String(tm.getHours()).padStart(2,'0')+':'+String(tm.getMinutes()).padStart(2,'0');
+    const sm=document.createElement('small');sm.textContent=hh;li.appendChild(sm);
+    if(m.type!=='sys'){const b=document.createElement('b');b.textContent=(cleanNick(m.nick)||'Misafir')+': ';li.appendChild(b);}
+    li.appendChild(document.createTextNode(String(m.text||'').slice(0,300)));ol.appendChild(li);
+  });
+  if(scroll)ol.scrollTop=ol.scrollHeight;
+  const stt=$('cp-status');stt.hidden=!Chat.status;stt.textContent=Chat.status||'';
+}
+let statT=0;
+window.addEventListener('konuk:move',()=>{if(!Chat.cur||Date.now()-statT<1500)return;statT=Date.now();Chat.room.presence({st:KonukGame.stats()}).catch(()=>{});});
+window.addEventListener('konuk:match',e=>{if(Chat.cur&&e.detail.len>=5)chatPost('sys',Chat.nick+' 5’li eşleşme yaptı!');});
+window.addEventListener('konuk:day',e=>{if(!Chat.cur)return;const d=e.detail;Chat.room.presence({st:KonukGame.stats()}).catch(()=>{});chatPost('sys',Chat.nick+' '+d.day+'. günü '+d.tiles+' taşla bitirdi'+(d.reviews.length?', '+d.reviews.length+' yorum aldı ('+d.reviews.map(n=>n+'★').join(' ')+')':'')+'.');});
+$('b-chat').onclick=()=>{if(!busy)openChat();};
 window.__konuk={get S(){return S;},findMove,trySwap,night};
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
