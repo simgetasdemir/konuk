@@ -133,6 +133,39 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
 @keyframes flip{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}}
 @keyframes tail{to{transform:rotate(-28deg)}}
 .cat-heart{animation:up 1s ease-out forwards}
+.sheet.wide{max-width:1000px}
+.plan-wrap{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;align-items:start}
+.plan{position:relative;width:100%;aspect-ratio:16/10;border-radius:10px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;border:3px solid #6b4a32;background:#6b4a32}
+.zone{position:absolute;border:3px solid #6b4a32;box-sizing:border-box}
+.zone.lobi{background:repeating-linear-gradient(90deg,#c8955f 0 calc(100%/8 - 1px),#b98550 calc(100%/8 - 1px) calc(100%/8))}
+.zone.oda{background:#e9dcc4}
+.zone.oda:nth-of-type(3){background:#dfe3cf}.zone.oda:nth-of-type(4){background:#e6d6d9}.zone.oda:nth-of-type(5){background:#d6dde6}
+.zone.locked{background:repeating-linear-gradient(45deg,#8a7a6a 0 8px,#9a8a78 8px 16px)}
+.zone .zl{position:absolute;left:4px;bottom:3px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(40,26,14,.6)}
+.zone.locked .zl{color:#f4f1ea}
+.gridlines{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(0,0,0,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.07) 1px,transparent 1px);background-size:calc(100%/16) calc(100%/10)}
+.fi{position:absolute;padding:2px;cursor:pointer}
+.fi svg{width:100%;height:100%;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+.fi.sel{outline:3px solid var(--accent);outline-offset:-1px;border-radius:4px}
+.fi.fixed{cursor:default}
+.ghost{position:absolute;pointer-events:none;opacity:.75;border-radius:4px}
+.ghost.ok{outline:3px solid #2e8a4b;background:rgba(46,138,75,.18)}
+.ghost.bad{outline:3px solid #c23a2b;background:rgba(194,58,43,.18)}
+.pg{position:absolute;width:calc(100%/16*.9);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:11px;border:2px solid #fff;pointer-events:none;transform:translate(-50%,-50%);font-family:var(--f-display)}
+.cat-list{display:flex;flex-direction:column;gap:6px;max-height:440px;overflow:auto}
+.ci{display:grid;grid-template-columns:40px 1fr auto;gap:8px;align-items:center;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.ci.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.ci:disabled{opacity:.5;cursor:not-allowed}
+.ci svg{width:36px;height:36px}
+.ci b{display:block;font-size:13px}.ci small{color:var(--muted);font-size:11.5px}
+.ci em{font-style:normal;font-weight:800;font-size:13px}
+.fx-icons{display:inline-flex;gap:2px;vertical-align:middle}.fx-icons svg{width:13px;height:13px}
+.plan-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-height:38px}
+.plan-bar .btn{padding:6px 12px}
+.rooms-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:12.5px}
+.rooms-sum div{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.rooms-sum b{display:block;margin-bottom:2px}
+@media (max-width:760px){.plan-wrap{grid-template-columns:minmax(0,1fr)}.cat-list{flex-direction:row;overflow-x:auto;max-height:none}.ci{flex:0 0 210px}}
 .decor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
 .sw{width:44px;height:44px;border-radius:12px;border:2px solid var(--line);position:relative}
@@ -163,6 +196,7 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
       <div class="stat"><small>Hamle</small><b id="s-moves">18</b></div>
       <div class="stat"><small>Kasa</small><b id="s-lira">30 ₺</b></div>
       <div class="stat"><small>İtibar</small><b id="s-rep">—</b></div>
+      <button class="btn" id="b-build" type="button">Kat planı</button>
       <button class="btn" id="b-decor" type="button">Dekorasyon</button>
       <button class="btn" id="b-sound" type="button" aria-pressed="false">Müzik: kapalı</button>
       <button class="btn" id="b-help" type="button">Nasıl oynanır</button>
@@ -228,7 +262,8 @@ function newGuest(){
   const name=rnd(NAMES.filter(n=>!used.has(n)));
   const trait=rnd(Object.keys(TRAITS));
   const needs={}; TK.forEach(t=>needs[t]=ri(40,75));
-  const g={id:S.nextId++,name,trait,origin:rnd(ORIGINS.filter(o=>!S.guests.some(x=>x.origin===o))),needs,gonul:30,nights:ri(2,3),color:rnd(AVA),wish:null};
+  const taken=new Set(S.guests.map(x=>x.room));let room=1;while(taken.has(room))room++;
+  const g={id:S.nextId++,room,name,trait,origin:rnd(ORIGINS.filter(o=>!S.guests.some(x=>x.origin===o))),needs,gonul:30,nights:ri(2,3),color:rnd(AVA),wish:null};
   g.wish=makeWish(g); return g;
 }
 function makeWish(g){
@@ -236,7 +271,7 @@ function makeWish(g){
   return {t,target:ri(9,15),got:0,done:false};
 }
 function freshState(){
-  S={day:1,move:0,lira:30,reviews:[],guests:[],sel:0,rooms:3,up:{},rel:{},log:[],nextId:1,won:false,grid:null,seenHelp:false,decor:{},wall:'deniz',petted:{}};
+  S={day:1,move:0,lira:30,reviews:[],guests:[],sel:0,rooms:3,up:{},rel:{},log:[],nextId:1,won:false,grid:null,seenHelp:false,decor:{},wall:'deniz',petted:{},furn:null,fid:1};
   S.guests.push(newGuest()); S.guests.push(newGuest());
   addLog('Simge Hotel kapılarını açtı. İlk konuklar geldi: '+S.guests.map(g=>g.name).join(' ve ')+'.');
   genGrid();
@@ -370,6 +405,7 @@ function endMove(){
     TK.forEach(t=>{
       let d=1.1;if(t===fav)d=2.6;
       const dec=DECOR.find(x=>x.need===t);if(dec&&S.decor[dec.id])d*=.8;
+      d*=furnFactor(g.room,t);
       if(t==='cay'&&r.fr.length)d*=.5;
       if(t==='nota'&&r.rv.length)d*=1.6;
       g.needs[t]=clamp(g.needs[t]-d,0,100);
@@ -496,6 +532,172 @@ function showDecor(){
     save();renderAll();showDecor();
   });
   $('b-decor-close').onclick=()=>{if(S.pendingNight)showNight();else closeModal();};
+}
+
+/* ---------- kat planı (inşa modu) ---------- */
+const PW=16,PH=10;
+const ZONES=[{id:'lobi',name:'Lobi',x:0,y:0,w:8,h:10},{id:'oda1',name:'Oda 1',x:8,y:0,w:4,h:5,room:1},{id:'oda2',name:'Oda 2',x:12,y:0,w:4,h:5,room:2},{id:'oda3',name:'Oda 3',x:8,y:5,w:4,h:5,room:3},{id:'oda4',name:'Çatı katı',x:12,y:5,w:4,h:5,room:4}];
+const FURN={
+ yatak:{name:'Çift kişilik yatak',w:2,h:3,cost:40,zone:'oda',fx:{yastik:2}},
+ tekyatak:{name:'Tek kişilik yatak',w:1,h:2,cost:15,zone:'oda',fx:{yastik:1}},
+ komodin:{name:'Komodin ve lamba',w:1,h:1,cost:10,zone:'oda',fx:{yastik:1}},
+ lavabo:{name:'Lavabo',w:1,h:1,cost:20,zone:'oda',fx:{sabun:2}},
+ dolap:{name:'Gardırop',w:2,h:1,cost:20,zone:'oda',fx:{sabun:1}},
+ masa:{name:'Çalışma masası',w:2,h:1,cost:15,zone:'oda',fx:{cay:1}},
+ radyo:{name:'Lambalı radyo',w:1,h:1,cost:20,zone:'any',fx:{nota:1}},
+ saksi:{name:'Saksı çiçeği',w:1,h:1,cost:8,zone:'any',fx:{sabun:1}},
+ kitaplik:{name:'Kitaplık',w:2,h:1,cost:25,zone:'any',fx:{cay:1,nota:1}},
+ kanepe:{name:'Kadife kanepe',w:3,h:1,cost:35,zone:'lobi',fx:{cay:2}},
+ sehpa:{name:'Çay sehpası',w:1,h:1,cost:10,zone:'lobi',fx:{cay:1}},
+ piyano:{name:'Duvar piyanosu',w:2,h:1,cost:60,zone:'lobi',fx:{nota:3}},
+ yemekmasasi:{name:'Yemek masası',w:2,h:2,cost:40,zone:'lobi',fx:{yemek:3}},
+ mutfak:{name:'Mutfak tezgâhı',w:3,h:1,cost:50,zone:'lobi',fx:{yemek:2}},
+ kedi:{name:'Kedi yatağı',w:1,h:1,cost:12,zone:'lobi',fx:{nota:1}},
+ resepsiyon:{name:'Resepsiyon',w:3,h:1,cost:0,zone:'lobi',fx:{},fixed:true}
+};
+function defaultFurn(){
+  S.furn=[{uid:S.fid++,id:'resepsiyon',x:5,y:0,rot:0},{uid:S.fid++,id:'tekyatak',x:8,y:0,rot:0},{uid:S.fid++,id:'tekyatak',x:12,y:0,rot:0},{uid:S.fid++,id:'tekyatak',x:8,y:5,rot:0},{uid:S.fid++,id:'tekyatak',x:12,y:5,rot:0}];
+}
+const fdim=(f)=>{const d=FURN[f.id];return f.rot?[d.h,d.w]:[d.w,d.h];};
+function zoneAt(x,y){return ZONES.find(z=>x>=z.x&&x<z.x+z.w&&y>=z.y&&y<z.y+z.h);}
+const zoneOpen=z=>!z.room||z.room<=S.rooms;
+function canPlace(id,x,y,rot,ignore){
+  const d=FURN[id],[w,h]=rot?[d.h,d.w]:[d.w,d.h];
+  if(x<0||y<0||x+w>PW||y+h>PH)return false;
+  const z=zoneAt(x,y);if(!z||!zoneOpen(z))return false;
+  if(d.zone==='lobi'&&z.id!=='lobi')return false;
+  if(d.zone==='oda'&&!z.room)return false;
+  for(let i=0;i<w;i++)for(let j=0;j<h;j++)if(zoneAt(x+i,y+j)!==z)return false;
+  for(const f of S.furn){if(f.uid===ignore)continue;const [fw,fh]=fdim(f);if(x<f.x+fw&&x+w>f.x&&y<f.y+fh&&y+h>f.y)return false;}
+  return true;
+}
+function zoneScore(zid){
+  const out={};TK.forEach(t=>out[t]=0);
+  S.furn.forEach(f=>{const z=zoneAt(f.x,f.y);if(z&&z.id===zid)for(const t in FURN[f.id].fx)out[t]+=FURN[f.id].fx[t];});
+  TK.forEach(t=>out[t]=Math.min(out[t],4));return out;
+}
+function furnFactor(room,t){
+  if(!S.furn)return 1;
+  const r=zoneScore('oda'+room)[t]||0,l=zoneScore('lobi')[t]||0;
+  return Math.max(.55,1-.1*(r+.5*l));
+}
+function furnSVG(id,rot){
+  const d=FURN[id],W=d.w*10,H=d.h*10;let g='';
+  const wood='#8d5f38',wood2='#a8744a';
+  switch(id){
+   case 'yatak':g='<rect x="1" y="1" width="18" height="28" rx="2" fill="'+wood+'"/><rect x="2.5" y="2.5" width="15" height="25" rx="1.5" fill="#f6f2ea"/><rect x="3.5" y="3.5" width="6" height="5" rx="2" fill="#fff" stroke="#d8d2c4" stroke-width=".6"/><rect x="10.5" y="3.5" width="6" height="5" rx="2" fill="#fff" stroke="#d8d2c4" stroke-width=".6"/><rect x="2.5" y="11" width="15" height="16.5" rx="1.5" fill="#2a56b0"/><path d="M2.5 13 h15" stroke="#fff" stroke-width=".8" opacity=".6"/>';break;
+   case 'tekyatak':g='<rect x="1" y="1" width="8" height="18" rx="2" fill="'+wood+'"/><rect x="2" y="2" width="6" height="16" rx="1.5" fill="#f6f2ea"/><rect x="2.8" y="2.8" width="4.4" height="3.6" rx="1.4" fill="#fff" stroke="#d8d2c4" stroke-width=".5"/><rect x="2" y="7.5" width="6" height="10.5" rx="1.2" fill="#13918e"/>';break;
+   case 'komodin':g='<rect x="1.5" y="1.5" width="7" height="7" rx="1" fill="'+wood2+'"/><circle cx="5" cy="5" r="2.6" fill="#ffd36b" stroke="#c49a45" stroke-width=".6"/>';break;
+   case 'lavabo':g='<rect x="1" y="1" width="8" height="8" rx="2" fill="#f4f6f8" stroke="#b9c4cc" stroke-width=".6"/><ellipse cx="5" cy="5.6" rx="2.8" ry="2.2" fill="#bfe3f3"/><circle cx="5" cy="2.4" r=".9" fill="#8a96a0"/>';break;
+   case 'dolap':g='<rect x="1" y="1" width="18" height="8" rx="1" fill="'+wood+'"/><path d="M10 1.5 v7" stroke="#6b4425" stroke-width=".8"/><circle cx="8.6" cy="5" r=".7" fill="#e8c48a"/><circle cx="11.4" cy="5" r=".7" fill="#e8c48a"/>';break;
+   case 'masa':g='<rect x="1" y="1.5" width="18" height="7" rx="1" fill="'+wood2+'"/><rect x="3" y="3" width="5" height="4" fill="#f4f1ea" transform="rotate(-8 5.5 5)"/><circle cx="15" cy="4.5" r="1.8" fill="#ffd36b"/>';break;
+   case 'radyo':g='<rect x="1.5" y="2" width="7" height="6" rx="1.4" fill="#7a4a2a"/><circle cx="3.9" cy="5" r="1.8" fill="#d9c49a"/><rect x="6" y="3.4" width="1.6" height="3.2" rx=".4" fill="#ffd36b"/>';break;
+   case 'saksi':g='<circle cx="5" cy="5" r="3.6" fill="#c0643c"/><circle cx="3.8" cy="4" r="2" fill="#4d8a3a"/><circle cx="6.2" cy="4.3" r="2" fill="#5a9a42"/><circle cx="5" cy="6.2" r="2" fill="#3f7a30"/><circle cx="5" cy="4.8" r=".9" fill="#d6323a"/>';break;
+   case 'kitaplik':g='<rect x="1" y="1" width="18" height="8" rx="1" fill="#6b4425"/>'+['#c8402c','#2a56b0','#c4840f','#13918e','#3d8848','#7a4fa8','#c8402c','#2a56b0'].map((c,i)=>'<rect x="'+(2+i*2)+'" y="2" width="1.6" height="6" fill="'+c+'"/>').join('');break;
+   case 'kanepe':g='<rect x="1" y="1" width="28" height="8" rx="2.5" fill="#7a2f4a"/><rect x="1" y="1" width="28" height="3" rx="1.5" fill="#5e2238"/>'+[0,1,2].map(i=>'<rect x="'+(2.5+i*8.6)+'" y="4.2" width="8" height="4" rx="1.4" fill="#93405f"/>').join('');break;
+   case 'sehpa':g='<rect x="1.5" y="1.5" width="7" height="7" rx="3.5" fill="'+wood2+'"/><path d="M4 3.5 h2 l-.4 3 h-1.2 z" fill="#c8402c" opacity=".85"/>';break;
+   case 'piyano':g='<rect x="1" y="1" width="18" height="8" rx="1" fill="#1d1a1c"/><rect x="2" y="5.5" width="16" height="2.8" fill="#f4f1ea"/>'+Array.from({length:10},(_,i)=>'<rect x="'+(2.9+i*1.6)+'" y="5.5" width=".8" height="1.7" fill="#1d1a1c"/>').join('');break;
+   case 'yemekmasasi':g='<circle cx="4" cy="10" r="2.4" fill="'+wood+'"/><circle cx="16" cy="10" r="2.4" fill="'+wood+'"/><circle cx="10" cy="3" r="2.4" fill="'+wood+'"/><circle cx="10" cy="17" r="2.4" fill="'+wood+'"/><rect x="5" y="5" width="10" height="10" rx="1.5" fill="'+wood2+'"/><rect x="5.6" y="5.6" width="8.8" height="8.8" rx="1" fill="#f4f1ea"/><circle cx="8" cy="8" r="1.4" fill="#c8402c"/><circle cx="12" cy="12" r="1.4" fill="#3d8848"/><circle cx="12" cy="8" r="1" fill="#c4840f"/>';break;
+   case 'mutfak':g='<rect x="1" y="1" width="28" height="8" rx="1" fill="#9aa3ab"/><rect x="2" y="2" width="26" height="6" fill="#d9dee2"/><rect x="4" y="3" width="6" height="4" rx="1" fill="#bfe3f3"/><circle cx="18" cy="5" r="1.7" fill="#333"/><circle cx="23" cy="5" r="1.7" fill="#333"/><circle cx="23" cy="5" r=".8" fill="#c8402c"/>';break;
+   case 'kedi':g='<circle cx="5" cy="5" r="4" fill="#d98aa0"/><circle cx="5" cy="5" r="2.8" fill="#efc2cf"/>'+((S.petted&&Object.keys(S.petted).length)?'':'<ellipse cx="5" cy="5.3" rx="2.2" ry="1.7" fill="#d98a45"/><circle cx="3.6" cy="4.4" r="1.1" fill="#d98a45"/><path d="M2.8 3.7 l.3 -1 l.7 .7z" fill="#d98a45"/>');break;
+   case 'resepsiyon':g='<rect x="1" y="1" width="28" height="8" rx="1.5" fill="#7d522f"/><rect x="2" y="2" width="26" height="3" fill="#9a6a3f"/><circle cx="24" cy="6.5" r="1.4" fill="#c49a45"/><rect x="5" y="5.6" width="6" height="2.4" fill="#f4f1ea"/>';break;
+  }
+  if(rot)return '<svg viewBox="0 0 '+H+' '+W+'" preserveAspectRatio="none"><g transform="translate('+H+' 0) rotate(90)">'+g+'</g></svg>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+g+'</svg>';
+}
+const fxIcons=fx=>'<span class="fx-icons">'+Object.entries(fx).map(([t,n])=>Array.from({length:n},()=>'<span style="color:var(--t-'+t+')">'+ICON[t]+'</span>').join('')).join('')+'</span>';
+let B={hold:null,sel:null,ghost:null};
+function showBuild(){
+  if(!S.furn)defaultFurn();
+  B={hold:null,sel:null,ghost:null};
+  openModal('<h2>Kat planı</h2><p>Kasada <b id="pl-lira">'+S.lira+' ₺</b> var. Listeden bir eşya seç ve plana yerleştir. Yerleştirdiğin bir eşyaya dokunarak onu taşıyabilir, döndürebilir ya da satabilirsin. Odadaki eşyalar o odada kalan konuğa, lobidekiler herkese yarım etkiyle iyi gelir.</p>'+
+   '<div class="plan-wrap"><div style="display:flex;flex-direction:column;gap:8px;min-width:0"><div class="plan" id="plan"></div><div class="plan-bar" id="plan-bar"></div><div class="rooms-sum" id="rooms-sum"></div></div>'+
+   '<div class="cat-list" id="cat-list"></div></div>'+
+   '<button class="btn primary" type="button" id="b-build-close">Planı kaydet ve kapat</button>');
+  $('sheet').classList.add('wide');
+  renderCatalog();renderPlan();
+  const plan=$('plan');
+  const cellOf=e=>{const r=plan.getBoundingClientRect();return [Math.floor((e.clientX-r.left)/r.width*PW),Math.floor((e.clientY-r.top)/r.height*PH)];};
+  const anchor=(c)=>{const d=FURN[B.hold.id],[w,h]=B.hold.rot?[d.h,d.w]:[d.w,d.h];return [c[0]-Math.floor((w-1)/2),c[1]-Math.floor((h-1)/2)];};
+  plan.addEventListener('pointermove',e=>{if(!B.hold||e.pointerType!=='mouse')return;B.ghost=anchor(cellOf(e));renderGhost();});
+  plan.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&B.hold){B.ghost=null;renderGhost();}});
+  plan.addEventListener('click',e=>{
+    const c=cellOf(e);
+    if(B.hold){
+      const a=anchor(c);
+      const same=B.ghost&&B.ghost[0]===a[0]&&B.ghost[1]===a[1];
+      if(e.pointerType&&e.pointerType!=='mouse'&&!same){B.ghost=a;renderGhost();return;}
+      B.ghost=a;tryDrop();return;
+    }
+    const it=e.target.closest('.fi');
+    B.sel=it&&!it.classList.contains('fixed')?+it.dataset.uid:null;renderPlan();
+  });
+  $('cat-list').addEventListener('click',e=>{
+    const b=e.target.closest('.ci');if(!b||b.disabled)return;
+    if(B.hold&&B.hold.from)S.furn.push(B.hold.from);
+    B.hold={id:b.dataset.id,rot:0,from:null};B.sel=null;B.ghost=null;renderCatalog();renderPlan();
+  });
+  $('plan-bar').addEventListener('click',e=>{
+    const a=e.target.closest('[data-act]');if(!a)return;const act=a.dataset.act;
+    if(act==='rot'&&B.hold){B.hold.rot=B.hold.rot?0:1;renderGhost();return;}
+    if(act==='cancel'){if(B.hold&&B.hold.from)S.furn.push(B.hold.from);B.hold=null;B.ghost=null;renderCatalog();renderPlan();return;}
+    const f=S.furn.find(x=>x.uid===B.sel);if(!f)return;
+    if(act==='move'){S.furn=S.furn.filter(x=>x!==f);B.hold={id:f.id,rot:f.rot,from:f};B.ghost=[f.x,f.y];B.sel=null;renderPlan();}
+    if(act==='frot'){const nr=f.rot?0:1;if(canPlace(f.id,f.x,f.y,nr,f.uid)){f.rot=nr;save();renderPlan();}else flashBar('Burada döndürmeye yer yok.');}
+    if(act==='sell'){const v=Math.floor(FURN[f.id].cost/2);S.furn=S.furn.filter(x=>x!==f);S.lira+=v;B.sel=null;addLog(FURN[f.id].name+' '+v+' ₺ karşılığında satıldı.');save();renderCatalog();renderPlan();renderStats();}
+  });
+  document.addEventListener('keydown',buildKeys);
+  $('b-build-close').onclick=()=>{if(B.hold&&B.hold.from)S.furn.push(B.hold.from);B.hold=null;document.removeEventListener('keydown',buildKeys);$('sheet').classList.remove('wide');save();closeModal();renderAll();};
+}
+function buildKeys(e){if($('modal').hidden||!B.hold)return;if(e.key==='r'||e.key==='R'){B.hold.rot=B.hold.rot?0:1;renderGhost();}if(e.key==='Escape'){if(B.hold.from)S.furn.push(B.hold.from);B.hold=null;B.ghost=null;renderCatalog();renderPlan();}}
+function flashBar(msg){const b=$('plan-bar');const sp=document.createElement('span');sp.style.color='var(--bad)';sp.style.fontSize='13px';sp.style.fontWeight='700';sp.textContent=msg;b.appendChild(sp);setTimeout(()=>sp.remove(),1800);}
+function tryDrop(){
+  const h=B.hold,[x,y]=B.ghost;
+  if(!canPlace(h.id,x,y,h.rot)){flashBar(FURN[h.id].zone==='lobi'?'Bu eşya yalnızca lobiye konabilir.':FURN[h.id].zone==='oda'?'Bu eşya yalnızca açık bir odaya konabilir.':'Buraya sığmıyor.');renderGhost();return;}
+  if(h.from){h.from.x=x;h.from.y=y;h.from.rot=h.rot;S.furn.push(h.from);B.sel=h.from.uid;B.hold=null;}
+  else{
+    const cost=FURN[h.id].cost;if(S.lira<cost){flashBar('Kasada yeterli para yok.');return;}
+    S.lira-=cost;const f={uid:S.fid++,id:h.id,x,y,rot:h.rot};S.furn.push(f);addLog(FURN[h.id].name+' yerleştirildi.');Sound.chime();
+    if(S.lira<cost)B.hold=null;
+  }
+  B.ghost=null;save();renderCatalog();renderPlan();renderStats();
+}
+function renderCatalog(){
+  const el=$('cat-list');if(!el)return;
+  el.innerHTML=Object.entries(FURN).filter(([,d])=>!d.fixed).map(([id,d])=>'<button type="button" class="ci'+(B.hold&&!B.hold.from&&B.hold.id===id?' on':'')+'" data-id="'+id+'"'+(S.lira<d.cost?' disabled':'')+'>'+
+    '<span style="display:grid;place-items:center">'+furnSVG(id,0).replace('<svg ','<svg style="width:'+Math.min(36,36*d.w/Math.max(d.w,d.h))+'px;height:'+Math.min(36,36*d.h/Math.max(d.w,d.h))+'px" ')+'</span>'+
+    '<span><b>'+d.name+'</b><small>'+(d.zone==='lobi'?'Lobi':d.zone==='oda'?'Oda':'Her yer')+' · '+d.w+'×'+d.h+' </small>'+fxIcons(d.fx)+'</span><em>'+d.cost+' ₺</em></button>').join('');
+  const pl=$('pl-lira');if(pl)pl.textContent=S.lira+' ₺';
+}
+function pct(x,n){return (x/n*100)+'%';}
+function renderPlan(){
+  const plan=$('plan');if(!plan)return;
+  let h=ZONES.map(z=>'<div class="zone '+(z.room?'oda':'lobi')+(zoneOpen(z)?'':' locked')+'" style="left:'+pct(z.x,PW)+';top:'+pct(z.y,PH)+';width:'+pct(z.w,PW)+';height:'+pct(z.h,PH)+'"><span class="zl">'+z.name+(zoneOpen(z)?'':' · kilitli')+'</span></div>').join('');
+  h+='<div class="gridlines"></div>';
+  S.furn.forEach(f=>{const [w,hh]=fdim(f);h+='<div class="fi'+(FURN[f.id].fixed?' fixed':'')+(B.sel===f.uid?' sel':'')+'" data-uid="'+f.uid+'" title="'+FURN[f.id].name+'" style="left:'+pct(f.x,PW)+';top:'+pct(f.y,PH)+';width:'+pct(w,PW)+';height:'+pct(hh,PH)+'">'+furnSVG(f.id,f.rot)+'</div>';});
+  S.guests.forEach(g=>{const z=ZONES.find(z=>z.room===g.room);if(!z)return;
+    const bed=S.furn.find(f=>/yatak/.test(f.id)&&zoneAt(f.x,f.y)===z);
+    let cx,cy;if(bed){const [w,hh]=fdim(bed);cx=bed.x+w/2;cy=bed.y+Math.min(hh,1.2);}else{cx=z.x+z.w/2;cy=z.y+z.h/2;}
+    h+='<div class="pg" style="left:'+pct(cx,PW)+';top:'+pct(cy,PH)+';background:'+g.color+'">'+g.name[0]+'</div>';});
+  h+='<div class="ghost" id="ghost" hidden></div>';
+  plan.innerHTML=h;renderGhost();
+  // araç çubuğu
+  const bar=$('plan-bar');
+  if(B.hold)bar.innerHTML='<span style="font-size:13px"><b>'+FURN[B.hold.id].name+'</b> elinde. '+(matchMedia('(pointer:fine)').matches?'Plana tıklayarak bırak, R ile döndür.':'Bir yere dokun, aynı yere tekrar dokunarak bırak.')+'</span><button class="btn" type="button" data-act="rot">Döndür</button><button class="btn" type="button" data-act="cancel">Vazgeç</button>';
+  else if(B.sel){const f=S.furn.find(x=>x.uid===B.sel);bar.innerHTML='<span style="font-size:13px"><b>'+FURN[f.id].name+'</b> '+fxIcons(FURN[f.id].fx)+'</span><button class="btn" type="button" data-act="move">Taşı</button><button class="btn" type="button" data-act="frot">Döndür</button><button class="btn" type="button" data-act="sell">Sat ('+Math.floor(FURN[f.id].cost/2)+' ₺)</button>';}
+  else bar.innerHTML='<span style="font-size:13px;color:var(--muted)">Bir eşya seç ya da plandaki bir eşyaya dokun.</span>';
+  // oda özeti
+  const sum=$('rooms-sum');
+  sum.innerHTML=ZONES.filter(zoneOpen).map(z=>{const sc=zoneScore(z.id),g=S.guests.find(x=>x.room===z.room);
+    return '<div><b>'+z.name+(g?' · '+g.name:z.room?' · boş':' · herkes')+'</b>'+TK.map(t=>sc[t]?'<span style="color:var(--t-'+t+')" title="'+TYPES[t].need+'">'+TYPES[t].need+' +'+sc[t]+'</span>':'').filter(Boolean).join(' · ')+(TK.every(t=>!sc[t])?'<span style="color:var(--muted)">Henüz etkisi yok</span>':'')+'</div>';}).join('');
+}
+function renderGhost(){
+  const gh=$('ghost');if(!gh)return;
+  if(!B.hold||!B.ghost){gh.hidden=true;return;}
+  const d=FURN[B.hold.id],[w,h]=B.hold.rot?[d.h,d.w]:[d.w,d.h],[x,y]=B.ghost;
+  gh.hidden=false;gh.className='ghost '+(canPlace(B.hold.id,x,y,B.hold.rot)?'ok':'bad');
+  gh.style.left=pct(x,PW);gh.style.top=pct(y,PH);gh.style.width=pct(w,PW);gh.style.height=pct(h,PH);
+  gh.innerHTML=furnSVG(B.hold.id,B.hold.rot);
 }
 
 /* ---------- kediler ---------- */
@@ -784,7 +986,7 @@ function renderGuests(){
     const r=relOf(g),w=g.wish;
     h+='<div class="guest'+(i===S.sel?' on':'')+'" role="button" tabindex="0" aria-pressed="'+(i===S.sel)+'" data-i="'+i+'" data-id="'+g.id+'">'+
       '<div class="g-head"><div class="ava" style="background:'+g.color+'">'+g.name[0]+'</div><div><div class="g-name">'+g.name+'</div><div class="g-sub">'+g.origin+'</div></div></div>'+
-      '<div class="chips"><span class="chip">'+TRAITS[g.trait].label+'</span><span class="chip mood-'+mw[1]+'">'+mw[0]+'</span><span class="chip">'+g.nights+' gece kalacak</span></div>'+
+      '<div class="chips"><span class="chip">'+TRAITS[g.trait].label+'</span><span class="chip mood-'+mw[1]+'">'+mw[0]+'</span><span class="chip">'+g.nights+' gece kalacak</span><span class="chip">Oda '+g.room+'</span></div>'+
       '<div class="needs">'+TK.map(t=>{const v=Math.round(g.needs[t]);return '<div class="need'+(v<25?' low':'')+'"><span style="color:var(--t-'+t+')">'+ICON[t]+'</span><span>'+TYPES[t].need+'</span><div class="bar"><i style="width:'+v+'%;background:var(--t-'+t+')"></i></div><em>'+v+'</em></div>';}).join('')+'</div>'+
       '<div class="gonul"><span>Gönül</span><div class="bar"><i style="width:'+Math.round(g.gonul)+'%"></i></div><span>'+Math.round(g.gonul)+'</span></div>'+
       (w?'<div class="wish'+(w.done?' done':'')+'"><span style="color:var(--t-'+w.t+')">'+ICON[w.t]+'</span>'+(w.done?'Dileği gerçekleşti':'Dilek: bugün '+w.target+' '+TYPES[w.t].label.toLowerCase()+' taşı ('+Math.min(w.got,w.target)+'/'+w.target+')')+'</div>':'')+
@@ -810,6 +1012,7 @@ function showHelp(){
   '<li>İhtiyaçları dolu kalan konuğun <b>gönlü</b> artar. Gönlü sıfıra inen konuk küsüp gider.</li>'+
   '<li>Akşam konuklar birbiriyle arkadaş olur ya da kapışır. Arkadaşı olanın sohbet ihtiyacı yavaşlar, gergin olanın keyfi çabuk kaçar.</li>'+
   '<li>Otelin iki kedisi var: <b>Pamuk</b> ve <b>Tarçın</b>. Lobide bir kediye dokunursan seçili konuğun keyfi artar. Her kedi günde bir kez sevilmek ister. Geceleri konukların yanında uyuyabilirler.</li>'+
+  '<li><b>Kat planı</b> düğmesiyle otelin planını aç. Odalara yatak, lavabo, radyo, lobiye kanepe, piyano, yemek masası gibi eşyalar yerleştir. Her konuk kendi odasındaki eşyalardan tam, lobidekilerden yarım faydalanır.</li>'+
   '<li><b>Dekorasyon</b> düğmesinden duvar rengini seç, lobiye kilim, çini, avize gibi dekorlar al. Her dekor bir ihtiyacın daha yavaş azalmasını sağlar.</li>'+
   '<li>Ayrılan konuklar yorum yazar. Kazandığın parayla oteli geliştir. Hedef: beş yıldızlı otel.</li></ul>'+
   '<button class="btn primary" type="button" id="b-close">Başlayalım</button>');
@@ -819,7 +1022,7 @@ function save(){
   try{S.grid=cells.map(row=>row.map(c=>c?c.t:null));localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}
 }
 function loadFrom(obj){
-  S=obj;S.decor=S.decor||{};S.petted=S.petted||{};S.wall=S.wall||'deniz';
+  S=obj;S.decor=S.decor||{};S.petted=S.petted||{};S.fid=S.fid||1;{const t=new Set();S.guests.forEach(g=>{if(!g.room||t.has(g.room)){let r=1;while(t.has(r))r++;g.room=r;}t.add(g.room);});}S.wall=S.wall||'deniz';
   cells=S.grid.map(row=>row.map(t=>newTile(t||rnd(TK))));
   if(findGroups().length||!findMove())genGrid();
 }
@@ -854,6 +1057,7 @@ $('guests').addEventListener('keydown',e=>{
 });
 $('b-help').onclick=showHelp;
 $('b-decor').onclick=()=>{if(!busy)showDecor();};
+$('b-build').onclick=()=>{if(!busy)showBuild();};
 $('b-sound').onclick=()=>{Sound.toggle();};
 let confirmNew=false;
 $('b-new').onclick=()=>{
