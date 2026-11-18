@@ -126,7 +126,7 @@ button:focus-visible,.guest:focus-visible{outline:3px solid var(--accent);outlin
 
 <div class="app">
   <header class="top">
-    <div class="brand"><h1>Kon<span>u</span>k</h1><p>Nar Konukevi, Ayvalık</p></div>
+    <div class="brand"><h1>Kon<span>u</span>k</h1><p>Simge Konukevi, Ayvalık</p></div>
     <div class="stats">
       <div class="stat"><small>Gün</small><b id="s-day">1</b></div>
       <div class="stat"><small>Saat</small><b id="s-clock">08:00</b></div>
@@ -205,7 +205,7 @@ function makeWish(g){
 function freshState(){
   S={day:1,move:0,lira:30,reviews:[],guests:[],sel:0,rooms:3,up:{},rel:{},log:[],nextId:1,won:false,grid:null,seenHelp:false};
   S.guests.push(newGuest()); S.guests.push(newGuest());
-  addLog('Nar Konukevi kapılarını açtı. İlk konuklar geldi: '+S.guests.map(g=>g.name).join(' ve ')+'.');
+  addLog('Simge Konukevi kapılarını açtı. İlk konuklar geldi: '+S.guests.map(g=>g.name).join(' ve ')+'.');
   genGrid();
 }
 const movesPerDay=()=>18+(S.up.bahce?4:0);
@@ -413,7 +413,7 @@ function showNight(){
   const {lines,winNow,day}=S.pendingNight;
   const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
   let h='<h2>'+day+'. günün sonu</h2>';
-  if(winNow)h+='<div class="win">Nar Konukevi beş yıldızlı oldu! Son yorumların ortalaması '+rep().toFixed(1)+'. İstersen oynamaya devam edebilirsin.</div>';
+  if(winNow)h+='<div class="win">Simge Konukevi beş yıldızlı oldu! Son yorumların ortalaması '+rep().toFixed(1)+'. İstersen oynamaya devam edebilirsin.</div>';
   h+='<p>Konuklar oda parası olarak <b>'+lines.pay+' ₺</b> ödedi. Kasada <b>'+S.lira+' ₺</b> var.</p>';
   if(lines.social.length)h+='<h3>Akşam avluda</h3><ul>'+lines.social.map(s=>'<li>'+s+'</li>').join('')+'</ul>';
   if(lines.out.length)h+='<h3>Ayrılanların yorumları</h3>'+lines.out.map(rv=>'<div class="review"><div><b>'+rv.name+'</b> <span class="stars">'+stars(rv.stars)+'</span>'+(rv.tip?' <small>· '+rv.tip+' ₺ bahşiş</small>':'')+'</div><div>“'+rv.text+'”</div></div>').join('');
@@ -480,7 +480,7 @@ function renderAll(){
 }
 function showHelp(){
   openModal('<h2>Konuk nasıl oynanır?</h2>'+
-  '<p>Ayvalık’taki küçük Nar Konukevi’nin ev sahibisin. Konukların ihtiyaçlarını bulmacayla karşılarsın.</p>'+
+  '<p>Ayvalık’taki küçük Simge Konukevi’nin ev sahibisin. Konukların ihtiyaçlarını bulmacayla karşılarsın.</p>'+
   '<div class="legend">'+TK.map(t=>'<div><div class="face" style="background:var(--t-'+t+')">'+ICON[t]+'</div><span><b>'+TYPES[t].label+'</b> → '+TYPES[t].need+'</span></div>').join('')+'</div>'+
   '<ul><li>Yan yana iki taşı yer değiştirerek aynı türden <b>3 ya da daha fazla</b> taşı sıraya diz. Kaydırarak ya da iki taşa sırayla dokunarak oynayabilirsin.</li>'+
   '<li>Eşleşen taşlar <b>seçili konuğa</b> gider. Müzik ise salondaki herkesi biraz neşelendirir.</li>'+

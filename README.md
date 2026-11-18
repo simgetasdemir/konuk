@@ -1,6 +1,6 @@
 # Konuk
 
-Konuk, bir eşleştirme bulmacası ile konuk yaşam simülasyonunu birleştiren tarayıcı oyunudur. Ayvalık'taki küçük **Nar Konukevi**'nin ev sahibisin.
+Konuk, bir eşleştirme bulmacası ile konuk yaşam simülasyonunu birleştiren tarayıcı oyunudur. Ayvalık'taki küçük **Simge Konukevi**'nin ev sahibisin.
 
 ## Oynanış
 
